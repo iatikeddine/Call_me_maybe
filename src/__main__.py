@@ -10,10 +10,12 @@ with open(vocab_file, 'r') as f:
 
 reversed_vocab = {value:key for key, value in vocab_content.items()}
 
-encoded_prompt = llm.encode(prompts[0].prompt)
-generated_tokens = []
-identation = 0
+fn_names = []
+for function in functions_list:
+    fn_names.append(function.name)
 
-while True:
-    logits = llm.get_logits_from_input_ids(encoded_prompt.tolist() + generated_tokens)
-    valid_tokens = get_valid_tokens()
+#contains function name: list of tokens
+fn_names_encoded = {name: llm.encode(name).tolist() for name in fn_names}
+
+prompt_ids = llm.encode(prompts[0].prompt).tolist()
+print(prompt_ids)
