@@ -10,7 +10,14 @@ with open(vocab_file, 'r') as f:
 
 reversed_vocab = {value:key for key, value in vocab_content.items()}
 
+def get_context() -> str:
+    context = "available functions:\n"
+    for function in functions_list:
+        context += function.name + " -> " + function.description + "\n"
+    return context
+
 def get_fn_name(prompt: str, valid_function_names: list) -> str:
+    #prompt_context = get_context()
     prompt_helper = "predict function name for this question: "
     prompt_shema = '{"function name": "'
     encoded_prompt = llm.encode(prompt_helper + prompt + prompt_shema).tolist()[0]
