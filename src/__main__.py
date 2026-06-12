@@ -68,36 +68,27 @@ def validate_param(value: str, expected_type: str) -> bool:
 def get_fn_params(all_functions: dict, function_name: str, user_prompt: str) -> str:
     function = all_functions[function_name]
 
-    result = {}
     generated = ""
     for param_name, param_info in function.parameters.items():
 
         context = (
-            f"function name: {function_name}\n"
-            f"number of parameters: {len(function.parameters)}\n"
-            f"prompt: {user_prompt}\n"
-            f'predict parameter "{param_name}": '
+            f"function: {function_name}\n"
+            f"parameter: {param_name}\n"
+            f"type: {param_info.type}\n"
+            f"user request: {user_prompt}\n"
+            f"{param_name} = "
         )
 
         encoded = llm.encode(context).tolist()[0]
-
         while True:
             logits = llm.get_logits_from_input_ids(encoded)
             token = logits.index(max(logits))
             encoded.append(token)
             piece = llm.decode([token])
             generated += piece
-            if piece in ["\n", ",", "}"]:
+            if piece in ["\n", ",", "}", '"']:
                 generated = generated.strip().rstrip(",}")
                 break
-
-        generated = generated.strip().strip('"')
-        if not validate_param(generated, param_info.type):
-            raise ValueError(
-                f"Invalid value '{generated}' "
-                f"for parameter '{param_name}' "
-                f"(expected {param_info.type})"
-            )
 
     return generated
 
