@@ -76,20 +76,19 @@ def get_fn_params(all_functions: dict, function_name: str, user_prompt: str) -> 
             f"parameter: {param_name}\n"
             f"type: {param_info.type}\n"
             f"user request: {user_prompt}\n"
-            f"{param_name} = "
+            f"predict this parameter based on user request\n"
+            f'{param_name} = "'
         )
 
         encoded = llm.encode(context).tolist()[0]
-        while True:
+        i = 0
+        while i < 20:
             logits = llm.get_logits_from_input_ids(encoded)
             token = logits.index(max(logits))
             encoded.append(token)
             piece = llm.decode([token])
             generated += piece
-            if piece in ["\n", ",", "}", '"']:
-                generated = generated.strip().rstrip(",}")
-                break
-
+            i += 1
     return generated
 
 if __name__ == "__main__":
