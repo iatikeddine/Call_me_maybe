@@ -22,15 +22,15 @@ def get_fn_name(prompt: str, valid_function_names: list) -> str:
     prompt_shema = '{"function name": "'
     encoded_prompt = llm.encode(prompt_context + prompt_helper + prompt + prompt_shema).tolist()[0]
 
-    token_count = 0
-    while len(valid_function_names) != 1:
+    token_position = 0
+    while len(valid_function_names) > 1:
         logits = llm.get_logits_from_input_ids(encoded_prompt)
         predicted_token = logits.index(max(logits))
 
         tokens_in_current_position = [
-            function[token_count]
+            function[token_position]
             for function in valid_function_names
-            if len(function) > token_count
+            if len(function) > token_position
         ]
 
         while predicted_token not in tokens_in_current_position:
@@ -39,50 +39,83 @@ def get_fn_name(prompt: str, valid_function_names: list) -> str:
 
         valid_function_names = [
             name for name in valid_function_names
-            if len(name) > token_count
-            if predicted_token == name[token_count]
+            if len(name) > token_position
+            if predicted_token == name[token_position]
         ]
 
         encoded_prompt.append(predicted_token)
-        token_count += 1
+        token_position += 1
 
     return llm.decode(valid_function_names[0])
 
-def param_count() -> list:
-    count = []
-    for function in functions_list:
-        count.append(len(function.parameters))
-    return count
 
-def get_fn_params(function_name: str, prompt: str) -> str:
-    params_len = param_count()
-    fn_name_len = {function.name: count for function, count in zip(functions_list, params_len)}
-    prompt_helper = "predict function parameters for this question: "
-    encoded_prompt = llm.encode(prompt_helper + prompt).tolist()[0]
-    params = ["a", "b", "c", "d", "e"]
+def validate_param(value: str, expected_type: str) -> bool:
+    if expected_type == "string":
+        return True
 
-    result = ""
-    for x in range(fn_name_len[name]):
-        encoded_prompt += llm.encode(f' "{params[x]}": ').tolist()[0]
+    if expected_type == "number":
+        try:
+            float(value)
+            return True
+        except ValueError:
+            return False
+    if expected_type == "bool":
+        if value.lower() == "true" or value.lower() != "false":
+            return True
+
+    return False
+
+def get_fn_params(all_functions: dict, function_name: str, user_prompt: str) -> str:
+    function = all_functions[function_name]
+
+    result = {}
+    generated = ""
+    for param_name, param_info in function.parameters.items():
+
+        context = (
+            f"function name: {function_name}\n"
+            f"number of parameters: {len(function.parameters)}\n"
+            f"prompt: {user_prompt}\n"
+            f'predict parameter "{param_name}": '
+        )
+
+        encoded = llm.encode(context).tolist()[0]
+
         while True:
-            logits = llm.get_logits_from_input_ids(encoded_prompt)
-            predicted_token = logits.index(max(logits))
-            encoded_prompt += predicted_token
-            result += llm.decode([predicted_token])
-            if result == '"':
+            logits = llm.get_logits_from_input_ids(encoded)
+            token = logits.index(max(logits))
+            encoded.append(token)
+            piece = llm.decode([token])
+            generated += piece
+            if piece in ["\n", ",", "}"]:
+                generated = generated.strip().rstrip(",}")
                 break
-    return result
 
+        generated = generated.strip().strip('"')
+        if not validate_param(generated, param_info.type):
+            raise ValueError(
+                f"Invalid value '{generated}' "
+                f"for parameter '{param_name}' "
+                f"(expected {param_info.type})"
+            )
+
+    return generated
 
 if __name__ == "__main__":
     function_names_encoded = [llm.encode(function.name).tolist()[0]
                                          for function in functions_list]
     function_names_results = []
     function_params_results = []
+    all_functions = {
+        function.name: function
+        for function in functions_list
+    }
     for prompt in prompts:
         function_names_results.append(get_fn_name(prompt.prompt_value, function_names_encoded))
     
     for prompt, name in zip(prompts, function_names_results):
         print(prompt.prompt_value)
-        function_params_results.append(get_fn_params(name, prompt.prompt_value))
+        function_params_results.append(
+            get_fn_params(all_functions, name, prompt.prompt_value))
         print(name)
+        print(get_fn_params(all_functions, name, prompt.prompt_value))
