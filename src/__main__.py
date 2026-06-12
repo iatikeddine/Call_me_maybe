@@ -82,7 +82,7 @@ def get_fn_params(all_functions: dict, function_name: str, user_prompt: str) -> 
 
         encoded = llm.encode(context).tolist()[0]
         i = 0
-        while i < 20:
+        while i < 10:
             logits = llm.get_logits_from_input_ids(encoded)
             token = logits.index(max(logits))
             encoded.append(token)
@@ -109,3 +109,4 @@ if __name__ == "__main__":
             get_fn_params(all_functions, name, prompt.prompt_value))
         print(name)
         print(get_fn_params(all_functions, name, prompt.prompt_value))
+        print()
