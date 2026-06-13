@@ -55,8 +55,69 @@ def get_fn_name(prompt: str, valid_function_names: list) -> str:
 
     return llm.decode(valid_function_names[0])
 
+def check_start_state(token: int) -> bool:
+    bracket_token = llm.encode("{").tolist()[0][0]
+    if token != bracket_token:
+        return False
+    return True
 
-#def get_fn_parameters()
+def check_key_state(token: int, step: int) -> bool:
+    quote_token = llm.encode('"').tolist()[0][0]
+
+    if step == 0 or step == 2:
+        return token == quote_token
+
+    return False
+
+
+def get_fn_parameters(function_name: str, number_of_params: int, prompt: str) -> str:
+
+    num_alpha = {0: "a", 1: "b", 2: "c", 3: "d"}
+    result = ""
+    state = States.START.value
+    context = (
+        f"function name: {function_name}\n"
+        f"number of parameters: {number_of_params}\n"
+        f"question: {prompt}\n"
+        f"predict the best function parameters for this question ")
+    encoded_prompt = llm.encode(context).tolist()[0]
+
+    for x in range(number_of_params):
+        if state == "start":
+            logits = llm.get_logits_from_input_ids(encoded_prompt)
+            chosed_token = logits.index(max(logits))
+            while not check_start_state(chosed_token):
+                logits[chosed_token] = -float('inf')
+                chosed_token = logits.index(max(logits))
+            encoded_prompt.append(chosed_token)
+            result += llm.decode([chosed_token])
+            state = States.KEY.value
+        
+        step = 0
+        if state == "key":
+            if step == 0:
+                logits = llm.get_logits_from_input_ids(encoded_prompt)
+                chosed_token = logits.index(max(logits))
+                while not check_key_state(chosed_token, step):
+                    logits[chosed_token] = -float("inf")
+                    chosed_token = logits.index(max(logits))
+                encoded_prompt.append(chosed_token)
+                result += llm.decode([chosed_token])
+                step += 1
+            if step == 1:
+                encoded_prompt.append(llm.encode(num_alpha[x]).tolist()[0][0])
+                result += num_alpha[x]
+                step += 1
+            if step == 2:
+                tokens = llm.encode('",').tolist()[0]
+                encoded_prompt.extend(tokens)
+                result += '": ,'
+            state = States.START.value
+
+
+    result += '}'
+
+    return result
 
 
 if __name__ == "__main__":
@@ -67,11 +128,12 @@ if __name__ == "__main__":
 
     for prompt in prompts:
         function_names_results.append(get_fn_name(prompt.prompt_value, function_names_encoded))
+
+    params_len = {function.name: len(function.parameters) for function in functions_list}
+
+    for name, prompt in zip(function_names_results, prompts):
+        function_params_results.append(get_fn_parameters(name, params_len[name], prompt.prompt_value))
     
-    for prompt, name in zip(prompts, function_names_results):
-        print(prompt.prompt_value)
+    for name, params in zip(function_names_results, function_params_results):
         print(name)
-    
-    functions_params = {function.name: len(function.parameters) for function in functions_list}
-    result_functions_params = {name: functions_params[name] for name in function_names_results}
-    print(result_functions_params)
+        print(params)

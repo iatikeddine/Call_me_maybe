@@ -3,6 +3,7 @@ from enum import Enum
 class State(Enum):
     START = "start"
 
-test = State.START.value
+test = (f"hello"
+        f"world")
 
 print(test)
