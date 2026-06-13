@@ -49,26 +49,123 @@ def get_fn_name(prompt: str, valid_function_names: list) -> str:
     return llm.decode(valid_function_names[0])
 
 
-def validate_param(value: str, expected_type: str) -> bool:
-    if expected_type == "string":
+def is_valid_boolean(value: str) -> bool:
+    value = value.strip().lower()
+    return (
+        "true".startswith(value)
+        or "false".startswith(value)
+        or value in ("true", "false")
+    )
+
+
+def is_valid_integer(value: str) -> bool:
+    value = value.strip()
+
+    if value == "":
         return True
 
-    if expected_type == "number":
+    if value == "-":
+        return True
+
+    if value.startswith("-"):
+        return value[1:].isdigit()
+
+    return value.isdigit()
+
+
+def is_valid_number(value: str) -> bool:
+    value = value.strip()
+
+    if value == "":
+        return True
+
+    if value == "-":
+        return True
+
+    try:
+        float(value)
+        return True
+    except ValueError:
+        pass
+
+    if value.endswith("."):
         try:
-            float(value)
+            float(value[:-1])
             return True
         except ValueError:
             return False
-    if expected_type == "bool":
-        if value.lower() == "true" or value.lower() != "false":
-            return True
 
     return False
 
-def get_fn_params(all_functions: dict, function_name: str, user_prompt: str) -> str:
-    function = all_functions[function_name]
+
+def is_valid_string(value: str) -> bool:
+    return len(value) <= 128
+
+
+def validate_value(value: str, param_type: str) -> bool:
+    if param_type == "boolean":
+        return is_valid_boolean(value)
+
+    if param_type == "integer":
+        return is_valid_integer(value)
+
+    if param_type == "number":
+        return is_valid_number(value)
+
+    if param_type == "float":
+        return is_valid_number(value)
+
+    if param_type == "string":
+        return is_valid_string(value)
+
+    return True
+
+
+def generate_value(
+    encoded_prompt: list[int],
+    param_type: str,
+    max_tokens: int = 20,
+) -> str:
 
     generated = ""
+
+    for _ in range(max_tokens):
+
+        logits = llm.get_logits_from_input_ids(encoded_prompt)
+
+        while True:
+            token = logits.index(max(logits))
+
+            piece = llm.decode([token])
+
+            candidate = generated + piece
+
+            if validate_value(candidate, param_type):
+                break
+
+            logits[token] = -float("inf")
+
+        encoded_prompt.append(token)
+        generated = candidate
+
+        if param_type == "boolean":
+            cleaned = generated.strip().lower()
+            if cleaned in ("true", "false"):
+                break
+
+    return generated.strip()
+
+
+def get_fn_params(
+    all_functions: dict,
+    function_name: str,
+    user_prompt: str,
+) -> dict:
+
+    function = all_functions[function_name]
+
+    result = {}
+
     for param_name, param_info in function.parameters.items():
 
         context = (
@@ -76,20 +173,26 @@ def get_fn_params(all_functions: dict, function_name: str, user_prompt: str) -> 
             f"parameter: {param_name}\n"
             f"type: {param_info.type}\n"
             f"user request: {user_prompt}\n"
-            f"predict this parameter based on user request\n"
-            f'{param_name} = "'
+            f"value:"
         )
 
         encoded = llm.encode(context).tolist()[0]
-        i = 0
-        while i < 10:
-            logits = llm.get_logits_from_input_ids(encoded)
-            token = logits.index(max(logits))
-            encoded.append(token)
-            piece = llm.decode([token])
-            generated += piece
-            i += 1
-    return generated
+
+        value = generate_value(
+            encoded_prompt=encoded,
+            param_type=param_info.type,
+        )
+
+        if param_info.type == "number":
+            try:
+                value = float(value)
+            except ValueError:
+                pass
+
+        result[param_name] = value
+
+    return result
+
 
 if __name__ == "__main__":
     function_names_encoded = [llm.encode(function.name).tolist()[0]
@@ -103,10 +206,23 @@ if __name__ == "__main__":
     for prompt in prompts:
         function_names_results.append(get_fn_name(prompt.prompt_value, function_names_encoded))
     
-    for prompt, name in zip(prompts, function_names_results):
-        print(prompt.prompt_value)
-        function_params_results.append(
-            get_fn_params(all_functions, name, prompt.prompt_value))
-        print(name)
-        print(get_fn_params(all_functions, name, prompt.prompt_value))
-        print()
+for prompt, name in zip(prompts, function_names_results):
+
+    params = get_fn_params(
+        all_functions,
+        name,
+        prompt.prompt_value
+    )
+
+    print(prompt.prompt_value)
+    print(name)
+
+    print(
+        json.dumps(
+            params,
+            ensure_ascii=False,
+            indent=2
+        )
+    )
+
+    print()
