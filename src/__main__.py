@@ -3,11 +3,6 @@ import json
 from parsing import functions_list, prompts
 from enum import Enum
 
-class States(Enum):
-    START = "start"
-    KEY = "key"
-    VALUE = "value"
-    END = "end"
 
 llm = Small_LLM_Model()
 vocab_file = llm.get_path_to_vocab_file()
@@ -55,70 +50,39 @@ def get_fn_name(prompt: str, valid_function_names: list) -> str:
 
     return llm.decode(valid_function_names[0])
 
-def check_start_state(token: int) -> bool:
-    bracket_token = llm.encode("{").tolist()[0][0]
-    if token != bracket_token:
-        return False
-    return True
 
-def check_key_state(token: int, step: int) -> bool:
-    quote_token = llm.encode('"').tolist()[0][0]
+def get_fn_params(function_name: str, functions_data, prompt: str) -> str:
+    num_of_params = len(functions_data[function_name].parameters)
 
-    if step == 0 or step == 2:
-        return token == quote_token
+    context = (f"function_name: {function_name}\n"
+               f"function description: {functions_data[function_name].description}\n"
+               f"number of parameters: {num_of_params}\n"
+               f"question: {prompt}\n"
+               f"Predict the correct function parametersin a json format\n"
+               )
 
-    return False
+    context += " {"
+    result = "{"
 
+    for x, (name, type) in enumerate(functions_data[function_name].parameters.items()):
+        format = f'"{name}": '
+        context += format
+        result += format
 
-def get_fn_parameters(function_name: str, number_of_params: int, prompt: str) -> str:
-
-    num_alpha = {0: "a", 1: "b", 2: "c", 3: "d"}
-    result = ""
-    state = States.START.value
-    context = (
-        f"function name: {function_name}\n"
-        f"number of parameters: {number_of_params}\n"
-        f"question: {prompt}\n"
-        f"predict the best function parameters for this question ")
-    encoded_prompt = llm.encode(context).tolist()[0]
-
-    for x in range(number_of_params):
-        if state == "start":
+        while True:
+            encoded_prompt = llm.encode(context).tolist()[0]
             logits = llm.get_logits_from_input_ids(encoded_prompt)
-            chosed_token = logits.index(max(logits))
-            while not check_start_state(chosed_token):
-                logits[chosed_token] = -float('inf')
-                chosed_token = logits.index(max(logits))
-            encoded_prompt.append(chosed_token)
-            result += llm.decode([chosed_token])
-            state = States.KEY.value
-        
-        step = 0
-        if state == "key":
-            if step == 0:
-                logits = llm.get_logits_from_input_ids(encoded_prompt)
-                chosed_token = logits.index(max(logits))
-                while not check_key_state(chosed_token, step):
-                    logits[chosed_token] = -float("inf")
-                    chosed_token = logits.index(max(logits))
-                encoded_prompt.append(chosed_token)
-                result += llm.decode([chosed_token])
-                step += 1
-            if step == 1:
-                encoded_prompt.append(llm.encode(num_alpha[x]).tolist()[0][0])
-                result += num_alpha[x]
-                step += 1
-            if step == 2:
-                tokens = llm.encode('",').tolist()[0]
-                encoded_prompt.extend(tokens)
-                result += '": ,'
-            state = States.START.value
+            picked_token = logits.index(max(logits))
+            piece = llm.decode([picked_token])
 
+            context += piece
+            result += piece
 
-    result += '}'
+            if ',' in piece or '}' in piece:
+                break
 
+    result = result.rstrip(', }\n') + '}'
     return result
-
 
 if __name__ == "__main__":
     function_names_encoded = [llm.encode(function.name).tolist()[0]
@@ -129,11 +93,13 @@ if __name__ == "__main__":
     for prompt in prompts:
         function_names_results.append(get_fn_name(prompt.prompt_value, function_names_encoded))
 
-    params_len = {function.name: len(function.parameters) for function in functions_list}
+    functions_data = {function.name: function for function in functions_list}
 
     for name, prompt in zip(function_names_results, prompts):
-        function_params_results.append(get_fn_parameters(name, params_len[name], prompt.prompt_value))
+        function_params_results.append(get_fn_params(name, functions_data, prompt.prompt_value))
     
-    for name, params in zip(function_names_results, function_params_results):
+    for name, params, prompt in zip(function_names_results, function_params_results, prompts):
+        print(prompt.prompt_value)
         print(name)
         print(params)
+        print()
