@@ -2,7 +2,7 @@ from llm_sdk import Small_LLM_Model
 import json
 from parsing import functions_list, prompts
 from enum import Enum
-
+import json
 
 llm = Small_LLM_Model()
 vocab_file = llm.get_path_to_vocab_file()
@@ -98,8 +98,13 @@ if __name__ == "__main__":
     for name, prompt in zip(function_names_results, prompts):
         function_params_results.append(get_fn_params(name, functions_data, prompt.prompt_value))
     
+    results = []
     for name, params, prompt in zip(function_names_results, function_params_results, prompts):
-        print(prompt.prompt_value)
-        print(name)
-        print(params)
-        print()
+        results.append({
+            "prompt": prompt.prompt_value,
+            "name": name,
+            "parameters": json.loads(params),
+        })
+    
+with open("output.json", "w") as f:
+    json.dump(results, f, indent=2)
