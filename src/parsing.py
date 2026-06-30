@@ -1,6 +1,13 @@
 import json
-from typing import Dict, List
-from pydantic import BaseModel, Field, ValidationError, ConfigDict, field_validator
+from typing import Dict, List, Any
+import sys
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+)
 
 
 class ParameterModel(BaseModel):
@@ -10,7 +17,8 @@ class ParameterModel(BaseModel):
     @field_validator("type")
     @classmethod
     def valid_type(cls, type: str) -> str:
-        valid_types = ["string", "number", "integer", "boolean", "bool"]
+        valid_types: List[str] = [
+            "string", "number", "integer", "boolean", "bool"]
         if type.lower() not in valid_types:
             raise ValueError("Invalid type")
         return type
@@ -23,7 +31,8 @@ class ReturnModel(BaseModel):
     @field_validator("type")
     @classmethod
     def valid_type(cls, type: str) -> str:
-        valid_types = ["string", "number", "integer", "boolean", "bool"]
+        valid_types: List[str] = [
+            "string", "number", "integer", "boolean", "bool"]
         if type.lower() not in valid_types:
             raise ValueError("Invalid type")
         return type
@@ -45,7 +54,10 @@ class FunctionDefinitionModel(BaseModel):
 
     @field_validator("parameters")
     @classmethod
-    def valid_param_name(cls, value: Dict[str, ParameterModel]) -> Dict[str, ParameterModel]:
+    def valid_param_name(
+        cls,
+        value: Dict[str, ParameterModel]
+    ) -> Dict[str, ParameterModel]:
         for name in value:
             if not name.strip():
                 raise ValueError("parameter name can't be empty")
@@ -64,37 +76,52 @@ class FunctionCallingTests(BaseModel):
         return prompt
 
 
-def load_and_validate_functions(filepath: str) -> List[FunctionDefinitionModel]:
+def load_and_validate_functions(
+    filepath: str
+) -> List[FunctionDefinitionModel]:
     try:
         with open(filepath, 'r') as f:
-            data = json.load(f)
+            data: List[Dict[str, Any]] = json.load(f)
 
-        validated_functions = []
+        validated_functions: List[FunctionDefinitionModel] = []
         for func_dict in data:
-            func_obj = FunctionDefinitionModel(**func_dict)
+            func_obj: FunctionDefinitionModel = FunctionDefinitionModel(
+                **func_dict
+            )
             validated_functions.append(func_obj)
 
         return validated_functions
 
     except (ValidationError, FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Error: {e}")
+        sys.exit(f"Error: {e}")
     return []
 
-def load_and_validate_function_calling_tests(filepath: str) -> List[FunctionCallingTests]:
+
+def load_and_validate_function_calling_tests(
+    filepath: str
+) -> List[FunctionCallingTests]:
     try:
         with open(filepath, 'r') as f:
-            data = json.load(f)
-        validate_prompts = []
+            data: List[Dict[str, Any]] = json.load(f)
+        validate_prompts: List[FunctionCallingTests] = []
         for prompt in data:
-            prompt_obj = FunctionCallingTests(**prompt)
+            prompt_obj: FunctionCallingTests = FunctionCallingTests(**prompt)
             validate_prompts.append(prompt_obj)
 
         return validate_prompts
 
-    except (ValidationError, FileNotFoundError, json.JSONDecodeError, ValueError) as e:
-        print(f"Error: {e}")
+    except (
+        ValidationError,
+        FileNotFoundError,
+        json.JSONDecodeError,
+        ValueError
+    ) as e:
+        sys.exit(f"Error: {e}")
 
     return []
 
-functions_list = load_and_validate_functions('data/input/functions_definition.json')
-prompts = load_and_validate_function_calling_tests('data/input/function_calling_tests.json')
+
+functions_list: List[FunctionDefinitionModel] = load_and_validate_functions(
+    'data/input/functions_definition.json')
+prompts: List[FunctionCallingTests] = load_and_validate_function_calling_tests(
+    'data/input/function_calling_tests.json')

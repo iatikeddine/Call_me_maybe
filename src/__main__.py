@@ -1,8 +1,8 @@
 from llm_sdk import Small_LLM_Model
 import json
 from src.parsing import functions_list, prompts
-import json
 from typing import List, Dict, Set, Any, Union
+import sys
 
 
 def function_name_context() -> str:
@@ -29,28 +29,29 @@ def valid_names_tokens(valid_names: List[List[int]]) -> Set[int]:
     return valid_tokens
 
 
-def get_function_name(prompt: str, valid_names: List[List[int]]) -> list[int]:
+def get_function_name(prompt: str, valid_names: List[List[int]]) -> List[int]:
     """
     Uses constraint decoding to get valid function name
-    based on the user prompt and context
+    based on the user prompt and context    
     """
     prompt_context: str = function_name_context()
     prompt_helper: str = "predict function name for this question: "
     prompt_shema: str = '{"function name": "'
-    encoded_prompt: str = llm.encode(prompt_context + prompt_helper + prompt + prompt_shema).tolist()[0]
-    
+    encoded_prompt: List[int] = llm.encode(
+        prompt_context + prompt_helper + prompt + prompt_shema).tolist()[0]
+
     token_position: int = 0
     valid_names_copy: List[List[int]] = valid_names.copy()
 
-    while(len(valid_names_copy) > 1):
-        logits: List(float) = llm.get_logits_from_input_ids(encoded_prompt)
+    while (len(valid_names_copy) > 1):
+        logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
         valid_tokens: Set[int] = valid_names_tokens(valid_names_copy)
 
         vocab_len: int = len(logits)
         for x in range(vocab_len):
             if x not in valid_tokens:
                 logits[x] = -float('inf')
-        
+
         picked_token: int = logits.index(max(logits))
 
         valid_names_copy = [
@@ -61,7 +62,7 @@ def get_function_name(prompt: str, valid_names: List[List[int]]) -> list[int]:
 
         encoded_prompt.append(picked_token)
         token_position += 1
-    
+
     return valid_names_copy[0]
 
 
@@ -78,7 +79,7 @@ def valid_string(encoded_prompt: List[int]) -> str:
     for x in range(vocab_len):
         if x != quote_id:
             logits[x] = -float('inf')
-    
+
     picked_token: int = logits.index(max(logits))
     encoded_prompt.append(picked_token)
     result += llm.decode([picked_token])
@@ -93,7 +94,7 @@ def valid_string(encoded_prompt: List[int]) -> str:
             quote_position: int = decoded.index('"')
             valid: str = decoded[:quote_position + 1]
             result += valid
-            
+
             if valid == '"':
                 encoded_prompt.append(quote_id)
             else:
@@ -115,12 +116,15 @@ def valid_number(encoded_prompt: List[int]) -> str:
     implements constraint decosing to predict correct number parameter
     value for a function and returns it as a string
     """
-    valid_tokens: List[str] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '.', ',', '}']
-    valid_tokens_encoded: List[int] = [llm.encode(token).tolist()[0][0] for token in valid_tokens]
-    result = ""
+    valid_tokens: List[str] = [
+        '0', '1', '2', '3', '4', '5', '6',
+        '7', '8', '9', '-', '.', ',', '}'
+    ]
+    valid_tokens_encoded: List[int] = [
+        llm.encode(token).tolist()[0][0]
+        for token in valid_tokens]
+    result: str = ""
 
-    comma_id: int = vocab_content[',']
-    bracket_id: int = vocab_content['}']
     generated_tokens: int = 0
 
     while generated_tokens < 25:
@@ -128,7 +132,7 @@ def valid_number(encoded_prompt: List[int]) -> str:
         for x in range(len(logits)):
             if x not in valid_tokens_encoded:
                 logits[x] = -float('inf')
-        
+
         picked_token: int = logits.index(max(logits))
         decoded: str = llm.decode([picked_token])
         if ',' in decoded or '}' in decoded:
@@ -137,12 +141,15 @@ def valid_number(encoded_prompt: List[int]) -> str:
         encoded_prompt.append(picked_token)
         result += llm.decode([picked_token])
         generated_tokens += 1
-    
+
     return result
 
-def valid_bool(encoded_prompt: List[int]) -> int:
-    valid_bool: List[str] = ['0' ,'1']
-    valid_tokens: List[int] = [llm.encode(x).tolist()[0][0] for x in valid_bool]
+
+def valid_bool(encoded_prompt: List[int]) -> str:
+    valid_bool: List[str] = ['0', '1']
+    valid_tokens: List[int] = [
+        llm.encode(x).tolist()[0][0]
+        for x in valid_bool]
 
     logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
 
@@ -150,26 +157,34 @@ def valid_bool(encoded_prompt: List[int]) -> int:
     for x in range(vocab_len):
         if x not in valid_tokens:
             logits[x] = -float('inf')
-    
-    picked_token : int= logits.index(max(logits))
+
+    picked_token: int = logits.index(max(logits))
     encoded_prompt.append(picked_token)
     return llm.decode(picked_token)
 
-def get_fn_params(function_name: str, functions_data: Dict[str, Any], prompt: str) -> str:
+
+def get_fn_params(
+    function_name: str,
+    functions_data: Dict[str, Any],
+    prompt: str
+) -> str:
     """
     implements constraint decoding to guide the llm to predict correct
     function name based on user prompt
     """
-    params_dict: Dict[str, str] = {key:value.type for key, value in functions_data[function_name].parameters.items()}
+    params_dict: Dict[str, str] = {
+        key: value.type
+        for key, value in functions_data[function_name].parameters.items()}
+
     params_len: int = len(params_dict)
 
-    context: str = (f"function name: {function_name}\n"
-               f"function purpose: {functions_data[function_name].description}\n"
-               f"number of parameters: {params_len}\n"
-               f"question: {prompt}\n"
-               f"predict the correct function parameters in JSON format "
-               )
-    
+    context: str = (
+        f"function name: {function_name}\n"
+        f"function purpose: {functions_data[function_name].description}\n"
+        f"number of parameters: {params_len}\n"
+        f"question: {prompt}\n"
+        f"predict the correct function parameters in JSON format ")
+
     context += '{'
     result: str = '{'
 
@@ -183,16 +198,15 @@ def get_fn_params(function_name: str, functions_data: Dict[str, Any], prompt: st
         if type == "string":
             value: str = valid_string(encoded_prompt)
 
-
         elif type in ["number", "integer"]:
-            value: str = valid_number(encoded_prompt)
-        
+            value = valid_number(encoded_prompt)
+
         elif type == "boolean":
-            value: str = valid_bool(encoded_prompt)
+            value = valid_bool(encoded_prompt)
 
         result += value
         context += value
-        
+
         if param_position == params_len - 1:
             result += '}'
         else:
@@ -203,7 +217,8 @@ def get_fn_params(function_name: str, functions_data: Dict[str, Any], prompt: st
     result = result.replace("\\", "\\\\")
     return result
 
-def cast_value(value: str, type: str) -> Union[int, float, bool]:
+
+def cast_value(value: str, type: str) -> Union[str, int, float, bool]:
     if type == "number":
         return float(value)
     elif type == "integer":
@@ -219,39 +234,46 @@ if __name__ == "__main__":
     vocab_file: str = llm.get_path_to_vocab_file()
 
     with open(vocab_file, 'r') as f:
-        vocab_content = json.load(f)
-    
-    # FUNCTION NAME CONSTRAINT DECODING
-    valid_names: List[List[int]] = [llm.encode(function.name).tolist()[0] for function in functions_list]
-    predicted_function_names List[str] = []
+        vocab_content: Dict[str, int] = json.load(f)
+
+    valid_names: List[List[int]] = [
+        llm.encode(function.name).tolist()[0]
+        for function in functions_list]
+    predicted_function_names: List[str] = []
 
     for prompt in prompts:
         result: List[int] = get_function_name(prompt.prompt, valid_names)
         predicted_function_names.append(llm.decode(result))
-    
 
-    # FUNCTION PARAMS CONSTRAINT DECODING
-    functions_data Dict[str, Any] = {function.name: function for function in functions_list}
+    functions_data: Dict[str, Any] = {
+        function.name: function
+        for function in functions_list}
+
     predicted_functions_params: List[str] = []
 
     for name, prompt in zip(predicted_function_names, prompts):
-        predicted_functions_params.append(get_fn_params(name, functions_data, prompt.prompt))
+        predicted_functions_params.append(
+            get_fn_params(name, functions_data, prompt.prompt))
 
-    results: List[Dict[str, Any]] = []    
-    for name, params, prompt in zip(predicted_function_names, predicted_functions_params, prompts):
+    results: List[Dict[str, Any]] = []
+    for name, params, prompt in zip(
+        predicted_function_names,
+        predicted_functions_params, prompts
+    ):
 
         params_to_dict: Dict[str, Any] = json.loads(params)
 
         if len(params_to_dict) == 1:
             (param_name, param_value), = params_to_dict.items()
-            param_type = functions_data[name].parameters[param_name]
-            params_to_dict[param_name] = cast_value(param_value, param_type.type)
+            param_type: str = functions_data[name].parameters[param_name]
+            params_to_dict[param_name] = cast_value(
+                param_value, param_type.type)
 
         else:
             for param_name, param_value in params_to_dict.items():
                 param_type = functions_data[name].parameters[param_name]
-                params_to_dict[param_name] = cast_value(param_value, param_type.type)
-                
+                params_to_dict[param_name] = cast_value(
+                    param_value, param_type.type)
 
         results.append({
             "prompt": prompt.prompt,
