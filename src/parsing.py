@@ -82,19 +82,24 @@ def load_and_validate_functions(
     try:
         with open(filepath, 'r') as f:
             data: List[Dict[str, Any]] = json.load(f)
+    except FileNotFoundError:
+        sys.exit(f"Error: functions definition file not found: '{filepath}'")
+    except json.JSONDecodeError as e:
+        sys.exit(
+            f"Error: invalid JSON in functions definition file '{filepath}': {e}")
 
+    try:
         validated_functions: List[FunctionDefinitionModel] = []
         for func_dict in data:
             func_obj: FunctionDefinitionModel = FunctionDefinitionModel(
                 **func_dict
             )
             validated_functions.append(func_obj)
-
         return validated_functions
-
-    except (ValidationError, FileNotFoundError, json.JSONDecodeError) as e:
-        sys.exit(f"Error: {e}")
-    return []
+    except ValidationError as e:
+        sys.exit(
+            f"Error: functions definition schema validation failed "
+            f"in '{filepath}': {e}")
 
 
 def load_and_validate_function_calling_tests(
@@ -103,25 +108,20 @@ def load_and_validate_function_calling_tests(
     try:
         with open(filepath, 'r') as f:
             data: List[Dict[str, Any]] = json.load(f)
+    except FileNotFoundError:
+        sys.exit(f"Error: function calling tests file not found: '{filepath}'")
+    except json.JSONDecodeError as e:
+        sys.exit(
+            f"Error: invalid JSON in tests file '{filepath}': {e}")
+
+    try:
         validate_prompts: List[FunctionCallingTests] = []
         for prompt in data:
             prompt_obj: FunctionCallingTests = FunctionCallingTests(**prompt)
             validate_prompts.append(prompt_obj)
-
         return validate_prompts
+    except ValidationError as e:
+        sys.exit(
+            f"Error: test prompts schema validation failed "
+            f"in '{filepath}': {e}")
 
-    except (
-        ValidationError,
-        FileNotFoundError,
-        json.JSONDecodeError,
-        ValueError
-    ) as e:
-        sys.exit(f"Error: {e}")
-
-    return []
-
-
-functions_list: List[FunctionDefinitionModel] = load_and_validate_functions(
-    'data/input/functions_definition.json')
-prompts: List[FunctionCallingTests] = load_and_validate_function_calling_tests(
-    'data/input/function_calling_tests.json')

@@ -1,8 +1,13 @@
 from llm_sdk import Small_LLM_Model
+import argparse
 import json
-from src.parsing import functions_list, prompts
-from typing import List, Dict, Set, Any, Union
+import os
 import sys
+from src.parsing import (
+    load_and_validate_functions,
+    load_and_validate_function_calling_tests,
+)
+from typing import List, Dict, Set, Any, Union
 
 
 def function_name_context() -> str:
@@ -230,50 +235,110 @@ def cast_value(value: str, type: str) -> Union[str, int, float, bool]:
 
 if __name__ == "__main__":
 
-    llm: Small_LLM_Model = Small_LLM_Model()
-    vocab_file: str = llm.get_path_to_vocab_file()
+    parser = argparse.ArgumentParser(
+        description="Function calling with constrained decoding"
+    )
+    parser.add_argument(
+        "--functions_definition",
+        default="data/input/functions_definition.json",
+        help="Path to the function definitions JSON file "
+             "(default: data/input/functions_definition.json)",
+    )
+    parser.add_argument(
+        "--input",
+        default="data/input/function_calling_tests.json",
+        help="Path to the function calling tests JSON file "
+             "(default: data/input/function_calling_tests.json)",
+    )
+    parser.add_argument(
+        "--output",
+        default="data/output/function_calling_results.json",
+        help="Path for the output JSON file "
+             "(default: data/output/function_calling_results.json)",
+    )
+    args = parser.parse_args()
 
-    with open(vocab_file, 'r') as f:
-        vocab_content: Dict[str, int] = json.load(f)
+    functions_list = load_and_validate_functions(args.functions_definition)
+    prompts = load_and_validate_function_calling_tests(args.input)
 
-    valid_names: List[List[int]] = [
-        llm.encode(function.name).tolist()[0]
-        for function in functions_list]
+    try:
+        llm: Small_LLM_Model = Small_LLM_Model()
+    except Exception as e:
+        sys.exit(f"Error: failed to load the LLM model: {e}")
+
+    try:
+        vocab_file: str = llm.get_path_to_vocab_file()
+        with open(vocab_file, 'r') as f:
+            vocab_content: Dict[str, int] = json.load(f)
+    except FileNotFoundError:
+        sys.exit(f"Error: vocabulary file not found: '{vocab_file}'")
+    except json.JSONDecodeError as e:
+        sys.exit(f"Error: invalid JSON in vocabulary file '{vocab_file}': {e}")
+
+    try:
+        valid_names: List[List[int]] = [
+            llm.encode(function.name).tolist()[0]
+            for function in functions_list
+        ]
+    except Exception as e:
+        sys.exit(f"Error: failed to encode function names: {e}")
+
     predicted_function_names: List[str] = []
-
-    for prompt in prompts:
-        result: List[int] = get_function_name(prompt.prompt, valid_names)
-        predicted_function_names.append(llm.decode(result))
+    for i, prompt in enumerate(prompts):
+        try:
+            result: List[int] = get_function_name(prompt.prompt, valid_names)
+            predicted_function_names.append(llm.decode(result))
+        except Exception as e:
+            sys.exit(
+                f"Error: failed to predict function name "
+                f"for prompt {i} ('{prompt.prompt}'): {e}"
+            )
 
     functions_data: Dict[str, Any] = {
         function.name: function
-        for function in functions_list}
+        for function in functions_list
+    }
 
     predicted_functions_params: List[str] = []
-
-    for name, prompt in zip(predicted_function_names, prompts):
-        predicted_functions_params.append(
-            get_fn_params(name, functions_data, prompt.prompt))
+    for i, (name, prompt) in enumerate(zip(predicted_function_names, prompts)):
+        try:
+            predicted_functions_params.append(
+                get_fn_params(name, functions_data, prompt.prompt)
+            )
+        except Exception as e:
+            sys.exit(
+                f"Error: failed to predict parameters for prompt {i} "
+                f"(function '{name}', prompt '{prompt.prompt}'): {e}"
+            )
 
     results: List[Dict[str, Any]] = []
-    for name, params, prompt in zip(
-        predicted_function_names,
-        predicted_functions_params, prompts
+    for i, (name, params, prompt) in enumerate(
+        zip(predicted_function_names, predicted_functions_params, prompts)
     ):
+        try:
+            params_to_dict: Dict[str, Any] = json.loads(params)
+        except json.JSONDecodeError as e:
+            sys.exit(
+                f"Error: generated parameters are not valid JSON "
+                f"for prompt {i} (function '{name}'): {e}\nRaw output: {params}"
+            )
 
-        params_to_dict: Dict[str, Any] = json.loads(params)
-
-        if len(params_to_dict) == 1:
-            (param_name, param_value), = params_to_dict.items()
-            param_type: str = functions_data[name].parameters[param_name]
-            params_to_dict[param_name] = cast_value(
-                param_value, param_type.type)
-
-        else:
-            for param_name, param_value in params_to_dict.items():
-                param_type = functions_data[name].parameters[param_name]
+        try:
+            if len(params_to_dict) == 1:
+                (param_name, param_value), = params_to_dict.items()
+                param_type: str = functions_data[name].parameters[param_name]
                 params_to_dict[param_name] = cast_value(
                     param_value, param_type.type)
+            else:
+                for param_name, param_value in params_to_dict.items():
+                    param_type = functions_data[name].parameters[param_name]
+                    params_to_dict[param_name] = cast_value(
+                        param_value, param_type.type)
+        except (ValueError, KeyError) as e:
+            sys.exit(
+                f"Error: type casting failed for prompt {i} "
+                f"(function '{name}', param '{param_name}'): {e}"
+            )
 
         results.append({
             "prompt": prompt.prompt,
@@ -281,5 +346,14 @@ if __name__ == "__main__":
             "parameters": params_to_dict,
         })
 
-    with open("output.json", "w") as f:
-        json.dump(results, f, indent=2)
+    output_path: str = args.output
+    try:
+        output_dir: str = os.path.dirname(output_path)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+        with open(output_path, "w") as f:
+            json.dump(results, f, indent=2)
+    except (OSError, IOError) as e:
+        sys.exit(f"Error: could not write output file '{output_path}': {e}")
+
+    print(f"Done. Results written to '{output_path}'")
