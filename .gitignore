@@ -1,20 +1,3 @@
-# Python
 .venv/
 __pycache__/
-*.py[cod]
-*.pyo
 .mypy_cache/
-.ruff_cache/
-*.egg-info/
-dist/
-build/
-
-# Project output (subject says: do NOT include output/ in the repo)
-data/output/
-
-# Editor / OS
-.DS_Store
-*.swp
-*.swo
-.idea/
-.vscode/

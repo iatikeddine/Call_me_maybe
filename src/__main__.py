@@ -11,8 +11,10 @@ from typing import List, Dict, Set, Any, Union
 
 
 def function_name_context() -> str:
-    """
-    Gets the context to feed the llm from functions data
+    """Build a context string listing all available function names and descriptions.
+
+    Returns:
+        A formatted string enumerating every function name and description.
     """
     context: str = "Available functions\n"
     for function in functions_list:
@@ -21,9 +23,15 @@ def function_name_context() -> str:
 
 
 def valid_names_tokens(valid_names: List[List[int]]) -> Set[int]:
-    """
-    Takes encoded functions names for function definitions
-    and returns a set of valid tokens to remove duplicates
+    """Collect all individual token IDs from a list of encoded function names.
+
+    Args:
+        valid_names: A list of token-ID sequences, one per candidate
+            function name.
+
+    Returns:
+        A set containing every token ID that appears in any of the
+        candidate name sequences.
     """
     valid_tokens: Set[int] = set()
 
@@ -35,9 +43,15 @@ def valid_names_tokens(valid_names: List[List[int]]) -> Set[int]:
 
 
 def get_function_name(prompt: str, valid_names: List[List[int]]) -> List[int]:
-    """
-    Uses constraint decoding to get valid function name
-    based on the user prompt and context    
+    """Use constrained decoding to select the best-matching function name.
+
+    Args:
+        prompt: The natural-language user request.
+        valid_names: A list of token-ID sequences representing all
+            candidate function names.
+
+    Returns:
+        The token-ID sequence of the selected function name.
     """
     prompt_context: str = function_name_context()
     prompt_helper: str = "predict function name for this question: "
@@ -72,9 +86,15 @@ def get_function_name(prompt: str, valid_names: List[List[int]]) -> List[int]:
 
 
 def valid_string(encoded_prompt: List[int]) -> str:
-    """
-    implements constraint decosing to predict correct string parameter
-    value for a function and returns it as a string
+    """Generate a constrained JSON string value using the LLM.
+
+    Args:
+        encoded_prompt: The current list of input token IDs representing
+            the generation context built so far.
+
+    Returns:
+        A string of the form ``"<content>"`` including the surrounding
+        double-quote characters.
     """
     quote_id: int = vocab_content['"']
     result: str = ''
@@ -117,9 +137,15 @@ def valid_string(encoded_prompt: List[int]) -> str:
 
 
 def valid_number(encoded_prompt: List[int]) -> str:
-    """
-    implements constraint decosing to predict correct number parameter
-    value for a function and returns it as a string
+    """Generate a constrained numeric value using the LLM.
+
+    Args:
+        encoded_prompt: The current list of input token IDs representing
+            the generation context built so far.
+
+    Returns:
+        A string containing only the raw numeric characters, without
+        surrounding quotes or trailing delimiters.
     """
     valid_tokens: List[str] = [
         '0', '1', '2', '3', '4', '5', '6',
@@ -131,7 +157,6 @@ def valid_number(encoded_prompt: List[int]) -> str:
     result: str = ""
 
     generated_tokens: int = 0
-
     while generated_tokens < 25:
         logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
         for x in range(len(logits)):
@@ -151,6 +176,15 @@ def valid_number(encoded_prompt: List[int]) -> str:
 
 
 def valid_bool(encoded_prompt: List[int]) -> str:
+    """Generate a constrained boolean value using the LLM.
+
+    Args:
+        encoded_prompt: The current list of input token IDs representing
+            the generation context built so far.
+
+    Returns:
+        The string '0' or '1' representing the predicted boolean value.
+    """
     valid_bool: List[str] = ['0', '1']
     valid_tokens: List[int] = [
         llm.encode(x).tolist()[0][0]
@@ -165,7 +199,7 @@ def valid_bool(encoded_prompt: List[int]) -> str:
 
     picked_token: int = logits.index(max(logits))
     encoded_prompt.append(picked_token)
-    return llm.decode(picked_token)
+    return llm.decode([picked_token])
 
 
 def get_fn_params(
@@ -173,9 +207,19 @@ def get_fn_params(
     functions_data: Dict[str, Any],
     prompt: str
 ) -> str:
-    """
-    implements constraint decoding to guide the llm to predict correct
-    function name based on user prompt
+    """Generate a JSON object string containing all parameters for a function.
+
+    Args:
+        function_name: The name of the function whose parameters are to be
+            generated.
+        functions_data: A mapping of function names to their
+            FunctionDefinitionModel instances.
+        prompt: The natural-language user request, used to guide the LLM
+            in predicting the correct argument values.
+
+    Returns:
+        A JSON object string of the form ``{"param": value, ...}``
+        containing all required parameters with their predicted values.
     """
     params_dict: Dict[str, str] = {
         key: value.type
@@ -200,13 +244,13 @@ def get_fn_params(
         result += field
 
         encoded_prompt: List[int] = llm.encode(context).tolist()[0]
-        if type == "string":
+        if type.lower() == "string":
             value: str = valid_string(encoded_prompt)
 
-        elif type in ["number", "integer"]:
+        elif type.lower() in ["number", "integer"]:
             value = valid_number(encoded_prompt)
 
-        elif type == "boolean":
+        elif type.lower() == "boolean":
             value = valid_bool(encoded_prompt)
 
         result += value
@@ -224,6 +268,17 @@ def get_fn_params(
 
 
 def cast_value(value: str, type: str) -> Union[str, int, float, bool]:
+    """Cast a string value to its declared Python type.
+
+    Args:
+        value: The raw string representation of the parameter value.
+        type: The declared type from the function definition. One of
+            'number', 'integer', 'boolean', or 'string'.
+
+    Returns:
+        The value converted to ``float``, ``int``, ``bool``, or ``str``
+        depending on ``type``.
+    """
     if type == "number":
         return float(value)
     elif type == "integer":
@@ -241,22 +296,24 @@ if __name__ == "__main__":
     parser.add_argument(
         "--functions_definition",
         default="data/input/functions_definition.json",
-        help="Path to the function definitions JSON file "
-             "(default: data/input/functions_definition.json)",
+        help="Path to the function definitions JSON file",
     )
     parser.add_argument(
         "--input",
         default="data/input/function_calling_tests.json",
-        help="Path to the function calling tests JSON file "
-             "(default: data/input/function_calling_tests.json)",
+        help="Path to the function calling tests JSON file",
     )
     parser.add_argument(
         "--output",
         default="data/output/function_calling_results.json",
-        help="Path for the output JSON file "
-             "(default: data/output/function_calling_results.json)",
+        help="Path for the output JSON file",
     )
     args = parser.parse_args()
+    try:
+        if not args.output.endswith(".json"):
+            raise ValueError("invalid ouput path does not contain .json");
+    except ValueError as e:
+        sys.exit(e)
 
     functions_list = load_and_validate_functions(args.functions_definition)
     prompts = load_and_validate_function_calling_tests(args.input)
@@ -271,9 +328,9 @@ if __name__ == "__main__":
         with open(vocab_file, 'r') as f:
             vocab_content: Dict[str, int] = json.load(f)
     except FileNotFoundError:
-        sys.exit(f"Error: vocabulary file not found: '{vocab_file}'")
+        sys.exit("Error: vocabulary file not found")
     except json.JSONDecodeError as e:
-        sys.exit(f"Error: invalid JSON in vocabulary file '{vocab_file}': {e}")
+        sys.exit(f"Error: invalid JSON in vocabulary file {e}")
 
     try:
         valid_names: List[List[int]] = [
@@ -283,62 +340,39 @@ if __name__ == "__main__":
     except Exception as e:
         sys.exit(f"Error: failed to encode function names: {e}")
 
+    # to check errors
     predicted_function_names: List[str] = []
-    for i, prompt in enumerate(prompts):
-        try:
-            result: List[int] = get_function_name(prompt.prompt, valid_names)
-            predicted_function_names.append(llm.decode(result))
-        except Exception as e:
-            sys.exit(
-                f"Error: failed to predict function name "
-                f"for prompt {i} ('{prompt.prompt}'): {e}"
-            )
+    for prompt in prompts:
+        result: List[int] = get_function_name(prompt.prompt, valid_names)
+        predicted_function_names.append(llm.decode(result))
 
     functions_data: Dict[str, Any] = {
-        function.name: function
-        for function in functions_list
-    }
+        function.name: function for function in functions_list}
 
+    # to check errors
     predicted_functions_params: List[str] = []
-    for i, (name, prompt) in enumerate(zip(predicted_function_names, prompts)):
-        try:
-            predicted_functions_params.append(
-                get_fn_params(name, functions_data, prompt.prompt)
-            )
-        except Exception as e:
-            sys.exit(
-                f"Error: failed to predict parameters for prompt {i} "
-                f"(function '{name}', prompt '{prompt.prompt}'): {e}"
-            )
+    for name, prompt in zip(predicted_function_names, prompts):
+        predicted_functions_params.append(
+            get_fn_params(name, functions_data, prompt.prompt))
 
     results: List[Dict[str, Any]] = []
-    for i, (name, params, prompt) in enumerate(
-        zip(predicted_function_names, predicted_functions_params, prompts)
+    for name, params, prompt in zip(
+        predicted_function_names, predicted_functions_params, prompts
     ):
-        try:
-            params_to_dict: Dict[str, Any] = json.loads(params)
-        except json.JSONDecodeError as e:
-            sys.exit(
-                f"Error: generated parameters are not valid JSON "
-                f"for prompt {i} (function '{name}'): {e}\nRaw output: {params}"
-            )
-
+        params_to_dict: Dict[str, Any] = json.loads(params)
         try:
             if len(params_to_dict) == 1:
                 (param_name, param_value), = params_to_dict.items()
-                param_type: str = functions_data[name].parameters[param_name]
+                param_type: str = functions_data[name].parameters[param_name].type
                 params_to_dict[param_name] = cast_value(
-                    param_value, param_type.type)
+                    param_value, param_type)
             else:
                 for param_name, param_value in params_to_dict.items():
-                    param_type = functions_data[name].parameters[param_name]
+                    param_type = functions_data[name].parameters[param_name].type
                     params_to_dict[param_name] = cast_value(
-                        param_value, param_type.type)
+                        param_value, param_type)
         except (ValueError, KeyError) as e:
-            sys.exit(
-                f"Error: type casting failed for prompt {i} "
-                f"(function '{name}', param '{param_name}'): {e}"
-            )
+            sys.exit(f"Error: type casting failed for prompt {i}")
 
         results.append({
             "prompt": prompt.prompt,
@@ -347,6 +381,7 @@ if __name__ == "__main__":
         })
 
     output_path: str = args.output
+
     try:
         output_dir: str = os.path.dirname(output_path)
         if output_dir:
