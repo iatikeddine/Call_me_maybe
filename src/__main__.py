@@ -112,7 +112,7 @@ def valid_string(encoded_prompt: List[int]) -> str:
     result += llm.decode([picked_token])
 
     generated_tokens: int = 0
-    while generated_tokens < 25:
+    while generated_tokens < len(encoded_prompt):
         logits = llm.get_logits_from_input_ids(encoded_prompt)
         picked_token = logits.index(max(logits))
         decoded: str = llm.decode([picked_token])
@@ -159,7 +159,7 @@ def valid_number(encoded_prompt: List[int]) -> str:
     result: str = ""
 
     generated_tokens: int = 0
-    while generated_tokens < 25:
+    while generated_tokens < len(encoded_prompt):
         logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
         for x in range(len(logits)):
             if x not in valid_tokens_encoded:

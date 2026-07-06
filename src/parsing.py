@@ -127,7 +127,7 @@ def load_and_validate_functions(
         with open(filepath, 'r') as f:
             data: List[Dict[str, Any]] = json.load(f)
     except FileNotFoundError:
-        sys.exit("Error: functions definition file not found {filepath}")
+        sys.exit("Error: functions definition file not found")
     except json.JSONDecodeError:
         sys.exit("Error: invalid JSON in functions definition file")
 
@@ -163,7 +163,7 @@ def load_and_validate_function_calling_tests(
         with open(filepath, 'r') as f:
             data: List[Dict[str, Any]] = json.load(f)
     except FileNotFoundError:
-        sys.exit(f"Error: function calling tests file not found {filepath}")
+        sys.exit(f"Error: function calling tests file not found")
     except json.JSONDecodeError:
         sys.exit("Error: invalid JSON in tests file")
 

@@ -1,5 +1,8 @@
 .PHONY: install run debug clean lint
 
+DEFAULT = --functions_definition data/input/functions_definition.json \
+			--input data/input/function_calling_tests.json \
+			--output data/output/function_calls.json
 VENV    = .venv
 
 install: $(VENV)
@@ -8,10 +11,10 @@ $(VENV): pyproject.toml uv.lock
 	uv sync
 
 run: $(VENV)
-	uv run python -m src
+	uv run python -m src $(DEFAULT)
 
 debug: $(VENV)
-	uv run python -m pdb -m src
+	uv run python -m pdb -m src $(DEFAULT)
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} +
