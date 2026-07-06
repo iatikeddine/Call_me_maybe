@@ -2,7 +2,7 @@
 
 DEFAULT = --functions_definition data/input/functions_definition.json \
 			--input data/input/function_calling_tests.json \
-			--output data/output/function_calling_results
+			--output data/output/function_calling_results.json
 VENV    = .venv
 
 install: $(VENV)
