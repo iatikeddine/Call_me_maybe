@@ -201,7 +201,8 @@ def valid_bool(encoded_prompt: List[int]) -> str:
 
     picked_token: int = logits.index(max(logits))
     encoded_prompt.append(picked_token)
-    return llm.decode([picked_token])
+    result: str = llm.decode([picked_token])
+    return result
 
 
 def get_fn_params(

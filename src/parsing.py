@@ -140,7 +140,7 @@ def load_and_validate_functions(
 
         return validated_functions
     except ValidationError as e:
-        sys.exit(f"e")
+        sys.exit(f"{e}")
 
 
 def load_and_validate_function_calling_tests(
