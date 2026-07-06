@@ -112,7 +112,8 @@ def valid_string(encoded_prompt: List[int]) -> str:
     result += llm.decode([picked_token])
 
     generated_tokens: int = 0
-    while generated_tokens < len(encoded_prompt):
+    limit = len(encoded_prompt)
+    while generated_tokens < limit:
         logits = llm.get_logits_from_input_ids(encoded_prompt)
         picked_token = logits.index(max(logits))
         decoded: str = llm.decode([picked_token])
@@ -159,7 +160,8 @@ def valid_number(encoded_prompt: List[int]) -> str:
     result: str = ""
 
     generated_tokens: int = 0
-    while generated_tokens < len(encoded_prompt):
+    limit: int = len(encoded_prompt)
+    while generated_tokens < limit:
         logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
         for x in range(len(logits)):
             if x not in valid_tokens_encoded:
@@ -194,7 +196,7 @@ def valid_bool(encoded_prompt: List[int]) -> str:
 
     logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
 
-    vocab_len: int = len(vocab_content)
+    vocab_len: int = len(logits)
     for x in range(vocab_len):
         if x not in valid_tokens:
             logits[x] = -float('inf')

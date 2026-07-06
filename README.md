@@ -57,9 +57,10 @@ uv run python -m src \
 ```bash
 make install  # install dependencies (uv sync)
 make run      # run with default paths
+make debug    # run with pdb debugger
 make clean    # remove __pycache__ and .mypy_cache
-make fclean   # clean + remove .venv and output file
-make re       # fclean + all
+make lint     # checks flake and mypy
+
 ```
 
 ---
