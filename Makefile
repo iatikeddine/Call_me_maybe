@@ -20,6 +20,6 @@ clean:
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type d -name .mypy_cache -exec rm -rf {} +
 
-lint:
+lint: $(VENV)
 	uv run flake8 src/
 	uv run mypy src/ --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs

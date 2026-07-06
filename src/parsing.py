@@ -141,6 +141,8 @@ def load_and_validate_functions(
         return validated_functions
     except ValidationError as e:
         sys.exit(f"{e}")
+    except TypeError:
+        sys.exit("Invalid JSON valid data in function definition file")
 
 
 def load_and_validate_function_calling_tests(
@@ -163,7 +165,7 @@ def load_and_validate_function_calling_tests(
         with open(filepath, 'r') as f:
             data: List[Dict[str, Any]] = json.load(f)
     except FileNotFoundError:
-        sys.exit(f"Error: function calling tests file not found")
+        sys.exit("Error: function calling tests file not found")
     except json.JSONDecodeError:
         sys.exit("Error: invalid JSON in tests file")
 
@@ -176,3 +178,5 @@ def load_and_validate_function_calling_tests(
         return validate_prompts
     except ValidationError as e:
         sys.exit(f"{e}")
+    except TypeError:
+        sys.exit("Invalid JSON valid data in function definition file")
