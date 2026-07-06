@@ -1,22 +1,22 @@
-.PHONY: all run clean fclean re
+.PHONY: install run debug clean lint
 
-UV      = uv
 VENV    = .venv
 
 install: $(VENV)
 
-$(VENV):
-	$(UV) sync
+$(VENV): pyproject.toml uv.lock
+	uv sync
 
 run: $(VENV)
-	$(UV) run python -m src
+	uv run python -m src
+
+debug: $(VENV)
+	uv run python -m pdb -m src
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type d -name .mypy_cache -exec rm -rf {} +
 
-fclean: clean
-	rm -rf $(VENV)
-	rm -f data/output/function_calling_results.json
-
-re: fclean all
+lint:
+	uv run flake8 src/
+	uv run mypy src/ --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
