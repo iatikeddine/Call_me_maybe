@@ -241,19 +241,19 @@ def get_fn_params(
     result: str = '{'
 
     param_position: int = 0
-    for name, type in params_dict.items():
+    for name, param_type in params_dict.items():
         field: str = f'"{name}": '
         context += field
         result += field
 
         encoded_prompt: List[int] = llm.encode(context).tolist()[0]
-        if type.lower() == "string":
+        if param_type.lower() == "string":
             value: str = valid_string(encoded_prompt)
 
-        elif type.lower() in ["number", "integer"]:
+        elif param_type.lower() in ["number", "integer"]:
             value = valid_number(encoded_prompt)
 
-        elif type.lower() == "boolean":
+        elif param_type.lower() == "boolean":
             value = valid_bool(encoded_prompt)
 
         result += value
@@ -343,7 +343,6 @@ if __name__ == "__main__":
     except Exception as e:
         sys.exit(f"Error: failed to encode function names: {e}")
 
-    # to check errors
     predicted_function_names: List[str] = []
     for prompt in prompts:
         result: List[int] = get_function_name(prompt.prompt, valid_names)
@@ -352,7 +351,6 @@ if __name__ == "__main__":
     functions_data: Dict[str, Any] = {
         function.name: function for function in functions_list}
 
-    # to check errors
     predicted_functions_params: List[str] = []
     for name, prompt in zip(predicted_function_names, prompts):
         predicted_functions_params.append(
