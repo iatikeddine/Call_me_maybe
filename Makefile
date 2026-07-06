@@ -3,7 +3,7 @@
 UV      = uv
 VENV    = .venv
 
-all: $(VENV)
+install: $(VENV)
 
 $(VENV):
 	$(UV) sync

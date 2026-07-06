@@ -93,7 +93,8 @@ class FunctionCallingTests(BaseModel):
     """Pydantic model representing a single test prompt entry.
 
     Attributes:
-        prompt: The natural-language request to be processed. Must not be blank.
+        prompt: The natural-language request to be processed.
+        Must not be blank.
     """
     model_config = {"extra": "forbid"}
     prompt: str
@@ -139,7 +140,7 @@ def load_and_validate_functions(
 
         return validated_functions
     except ValidationError as e:
-        sys.exit(e)
+        sys.exit(f"e")
 
 
 def load_and_validate_function_calling_tests(
@@ -164,7 +165,7 @@ def load_and_validate_function_calling_tests(
     except FileNotFoundError:
         sys.exit(f"Error: function calling tests file not found {filepath}")
     except json.JSONDecodeError:
-        sys.exit(f"Error: invalid JSON in tests file")
+        sys.exit("Error: invalid JSON in tests file")
 
     try:
         validate_prompts: List[FunctionCallingTests] = []
@@ -174,5 +175,4 @@ def load_and_validate_function_calling_tests(
 
         return validate_prompts
     except ValidationError as e:
-        sys.exit(e)
-
+        sys.exit(f"{e}")

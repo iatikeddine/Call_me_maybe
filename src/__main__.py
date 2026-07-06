@@ -3,7 +3,7 @@ import argparse
 import json
 import os
 import sys
-from src.parsing import (
+from .parsing import (
     load_and_validate_functions,
     load_and_validate_function_calling_tests,
 )
@@ -11,7 +11,9 @@ from typing import List, Dict, Set, Any, Union
 
 
 def function_name_context() -> str:
-    """Build a context string listing all available function names and descriptions.
+    """
+    Build a context string listing all available function names
+    and descriptions.
 
     Returns:
         A formatted string enumerating every function name and description.
@@ -311,9 +313,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     try:
         if not args.output.endswith(".json"):
-            raise ValueError("invalid ouput path does not contain .json");
+            raise ValueError("invalid ouput path does not contain .json")
     except ValueError as e:
-        sys.exit(e)
+        sys.exit(f"{e}")
 
     functions_list = load_and_validate_functions(args.functions_definition)
     prompts = load_and_validate_function_calling_tests(args.input)
@@ -363,16 +365,16 @@ if __name__ == "__main__":
         try:
             if len(params_to_dict) == 1:
                 (param_name, param_value), = params_to_dict.items()
-                param_type: str = functions_data[name].parameters[param_name].type
+                param_type = functions_data[name].parameters[param_name]
                 params_to_dict[param_name] = cast_value(
-                    param_value, param_type)
+                    param_value, param_type.type)
             else:
                 for param_name, param_value in params_to_dict.items():
-                    param_type = functions_data[name].parameters[param_name].type
+                    param_type = functions_data[name].parameters[param_name]
                     params_to_dict[param_name] = cast_value(
-                        param_value, param_type)
-        except (ValueError, KeyError) as e:
-            sys.exit(f"Error: type casting failed for prompt {i}")
+                        param_value, param_type.type)
+        except (ValueError, KeyError):
+            sys.exit("Error: type casting failed")
 
         results.append({
             "prompt": prompt.prompt,
