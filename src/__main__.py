@@ -185,7 +185,7 @@ def valid_number(encoded_prompt: List[int]) -> str:
     generated_tokens: int = 1
     while generated_tokens < max_tokens:
         logits = llm.get_logits_from_input_ids(encoded_prompt)
-        if generated_tokens == 1:
+        if generated_tokens == 1 and llm.decode([picked_token]) == '-':
             for x in range(len(logits)):
                 if x not in digit_valid:
                     logits[x] = -float('inf')
