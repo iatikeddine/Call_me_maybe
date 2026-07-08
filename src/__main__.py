@@ -153,23 +153,39 @@ def valid_number(encoded_prompt: List[int]) -> str:
         surrounding quotes or trailing delimiters.
     """
     valid_tokens: List[str] = [
-        '0', '1', '2', '3', '4', '5', '6',
-        '7', '8', '9', '-', '.', ',', '}'
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
     ]
-    valid_tokens_encoded: List[int] = [
+    first_tokens: list[str] = valid_tokens + ['-']
+    rest_tokens: list[str] = valid_tokens + ['.', ',', '}']
+
+    first_valid: List[int] = [
         llm.encode(token).tolist()[0][0]
-        for token in valid_tokens]
+        for token in first_tokens]
+
+    rest_valid: List[int] = [
+        llm.encode(token).tolist()[0][0]
+        for token in rest_tokens]
+
     result: str = ""
     max_tokens = 100
 
+    logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
+    for x in range(len(logits)):
+        if x not in first_valid:
+            logits[x] = -float('inf')
+
+    picked_token: int = logits.index(max(logits))
+    encoded_prompt.append(picked_token)
+    result += llm.decode([picked_token])
+
     generated_tokens: int = 0
     while generated_tokens < max_tokens:
-        logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
+        logits = llm.get_logits_from_input_ids(encoded_prompt)
         for x in range(len(logits)):
-            if x not in valid_tokens_encoded:
+            if x not in rest_valid:
                 logits[x] = -float('inf')
 
-        picked_token: int = logits.index(max(logits))
+        picked_token = logits.index(max(logits))
         decoded: str = llm.decode([picked_token])
         if ',' in decoded or '}' in decoded:
             return result
