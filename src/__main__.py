@@ -4,8 +4,10 @@ import json
 import os
 import sys
 from .parsing import (
-    load_and_validate_functions,
-    load_and_validate_function_calling_tests,
+    validate_functions,
+    validate_tests,
+    FunctionCallingTests,
+    FunctionDefinitionModel,
 )
 from typing import List, Dict, Set, Any, Union
 
@@ -360,8 +362,10 @@ if __name__ == "__main__":
     except ValueError as e:
         sys.exit(f"{e}")
 
-    functions_list = load_and_validate_functions(args.functions_definition)
-    prompts = load_and_validate_function_calling_tests(args.input)
+    functions_list: List[FunctionDefinitionModel] = validate_functions(
+        args.functions_definition
+    )
+    prompts: List[FunctionCallingTests] = validate_tests(args.input)
 
     try:
         llm: Small_LLM_Model = Small_LLM_Model()
@@ -386,17 +390,23 @@ if __name__ == "__main__":
         sys.exit(f"Error: failed to encode function names: {e}")
 
     predicted_function_names: List[str] = []
-    for prompt in prompts:
-        result: List[int] = get_function_name(prompt.prompt, valid_names)
-        predicted_function_names.append(clean_text(llm.decode(result)))
+    try:
+        for prompt in prompts:
+            result: List[int] = get_function_name(prompt.prompt, valid_names)
+            predicted_function_names.append(clean_text(llm.decode(result)))
+    except Exception as e:
+        sys.exit(f"{e}")
 
-    functions_data: Dict[str, Any] = {
+    functions_data: Dict[str, FunctionDefinitionModel] = {
         function.name: function for function in functions_list}
 
     predicted_functions_params: List[str] = []
-    for name, prompt in zip(predicted_function_names, prompts):
-        predicted_functions_params.append(
-            clean_text(get_fn_params(name, functions_data, prompt.prompt)))
+    try:
+        for name, prompt in zip(predicted_function_names, prompts):
+            predicted_functions_params.append(
+                clean_text(get_fn_params(name, functions_data, prompt.prompt)))
+    except Exception as e:
+        sys.exit(f"{e}")
 
     results: List[Dict[str, Any]] = []
     try:

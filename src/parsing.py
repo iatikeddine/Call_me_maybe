@@ -108,7 +108,7 @@ class FunctionCallingTests(BaseModel):
         return prompt
 
 
-def load_and_validate_functions(
+def validate_functions(
     filepath: str
 ) -> List[FunctionDefinitionModel]:
     """Load and validate a function definitions JSON file.
@@ -145,7 +145,7 @@ def load_and_validate_functions(
         sys.exit("Invalid JSON valid data in function definition file")
 
 
-def load_and_validate_function_calling_tests(
+def validate_tests(
     filepath: str
 ) -> List[FunctionCallingTests]:
     """Load and validate a function calling tests JSON file.
