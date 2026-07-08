@@ -179,4 +179,4 @@ def validate_tests(
     except ValidationError as e:
         sys.exit(f"{e}")
     except TypeError:
-        sys.exit("Invalid JSON valid data in function definition file")
+        sys.exit("Invalid JSON valid data in tests file")

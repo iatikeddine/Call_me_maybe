@@ -128,7 +128,7 @@ def valid_string(encoded_prompt: List[int]) -> str:
             if valid == '"':
                 encoded_prompt.append(quote_id)
             else:
-                valid_ids: List[int] = llm.encode(valid).tolist()
+                valid_ids: List[int] = llm.encode(valid).tolist()[0]
                 encoded_prompt.extend(valid_ids)
             return result
 
