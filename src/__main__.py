@@ -155,8 +155,8 @@ def valid_number(encoded_prompt: List[int]) -> str:
     valid_tokens: List[str] = [
         '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
     ]
-    first_tokens: list[str] = valid_tokens + ['-']
-    rest_tokens: list[str] = valid_tokens + ['.', ',', '}']
+    first_tokens: List[str] = valid_tokens + ['-']
+    rest_tokens: List[str] = valid_tokens + ['.', ',', '}']
 
     digit_valid: List[int] = [
         llm.encode(token).tolist()[0][0]
