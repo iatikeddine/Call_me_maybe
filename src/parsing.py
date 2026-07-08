@@ -128,6 +128,8 @@ def validate_functions(
             data: List[Dict[str, Any]] = json.load(f)
     except FileNotFoundError:
         sys.exit("Error: functions definition file not found")
+    except PermissionError:
+        sys.exit("Error: permission to read file is denied")
     except json.JSONDecodeError:
         sys.exit("Error: invalid JSON in functions definition file")
 
@@ -166,6 +168,8 @@ def validate_tests(
             data: List[Dict[str, Any]] = json.load(f)
     except FileNotFoundError:
         sys.exit("Error: function calling tests file not found")
+    except PermissionError:
+        sys.exit("Error: premission to read file is denied")
     except json.JSONDecodeError:
         sys.exit("Error: invalid JSON in tests file")
 

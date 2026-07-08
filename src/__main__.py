@@ -403,6 +403,8 @@ if __name__ == "__main__":
             vocab_content: Dict[str, int] = json.load(f)
     except FileNotFoundError:
         sys.exit("Error: vocabulary file not found")
+    except PermissionError:
+        sys.exit("Error: permission to read file is denied")
     except json.JSONDecodeError as e:
         sys.exit(f"Error: invalid JSON in vocabulary file {e}")
 
@@ -469,5 +471,9 @@ if __name__ == "__main__":
             json.dump(results, f, indent=2)
     except (OSError, IOError) as e:
         sys.exit(f"Error: could not write output file '{output_path}': {e}")
+    except PermissionError:
+        sys.exit("Error: permission to write in file is denied")
+    except FileNotFoundError:
+        sys.exit("Error: file not found")
 
     print(f"Done. Results written to '{output_path}'")
