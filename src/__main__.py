@@ -102,7 +102,7 @@ def valid_string(encoded_prompt: List[int]) -> str:
     """
     quote_id: int = vocab_content['"']
     result: str = ''
-    max_tokens = 100
+    max_tokens: int = 100
 
     logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
     vocab_len: int = len(logits)
@@ -158,6 +158,10 @@ def valid_number(encoded_prompt: List[int]) -> str:
     first_tokens: list[str] = valid_tokens + ['-']
     rest_tokens: list[str] = valid_tokens + ['.', ',', '}']
 
+    digit_valid: List[int] = [
+        llm.encode(token).tolist()[0][0]
+        for token in valid_tokens]
+
     first_valid: List[int] = [
         llm.encode(token).tolist()[0][0]
         for token in first_tokens]
@@ -167,7 +171,7 @@ def valid_number(encoded_prompt: List[int]) -> str:
         for token in rest_tokens]
 
     result: str = ""
-    max_tokens = 100
+    max_tokens: int = 100
 
     logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
     for x in range(len(logits)):
@@ -178,12 +182,17 @@ def valid_number(encoded_prompt: List[int]) -> str:
     encoded_prompt.append(picked_token)
     result += llm.decode([picked_token])
 
-    generated_tokens: int = 0
+    generated_tokens: int = 1
     while generated_tokens < max_tokens:
         logits = llm.get_logits_from_input_ids(encoded_prompt)
-        for x in range(len(logits)):
-            if x not in rest_valid:
-                logits[x] = -float('inf')
+        if generated_tokens == 1:
+            for x in range(len(logits)):
+                if x not in digit_valid:
+                    logits[x] = -float('inf')
+        else:
+            for x in range(len(logits)):
+                if x not in rest_valid:
+                    logits[x] = -float('inf')
 
         picked_token = logits.index(max(logits))
         decoded: str = llm.decode([picked_token])
