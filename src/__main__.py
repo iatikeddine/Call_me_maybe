@@ -268,7 +268,6 @@ def get_fn_params(
             context += ','
         param_position += 1
 
-    result = result.replace("\\", "\\\\")
     return result
 
 
@@ -291,6 +290,47 @@ def cast_value(value: str, type: str) -> Union[str, int, float, bool]:
     elif type == "boolean":
         return bool(int(value))
     return value
+
+
+def clean_text(text: str) -> str:
+    """Cleans a string by double-escaping invalid JSON escape sequences.
+
+    Args:
+        text (str): The raw input string containing potentially
+        invalid escapes.
+    Returns:
+        str: The sanitized string with invalid escapes safely double-escaped.
+    """
+    valid_escapes: Set[str] = set(
+        ['"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u']
+    )
+
+    final_result: List[str] = []
+
+    i: int = 0
+    text_len: int = len(text)
+    while i < text_len:
+        current: str = text[i]
+
+        if current == '\\':
+            if i + 1 == text_len:
+                final_result.append('\\\\')
+                break
+
+            next_char = text[i + 1]
+            if next_char in valid_escapes:
+                final_result.append('\\')
+                final_result.append(next_char)
+            else:
+                final_result.append('\\\\')
+                final_result.append(next_char)
+
+            i += 2
+        else:
+            final_result.append(current)
+            i += 1
+
+    return "".join(final_result)
 
 
 if __name__ == "__main__":
@@ -359,11 +399,11 @@ if __name__ == "__main__":
             get_fn_params(name, functions_data, prompt.prompt))
 
     results: List[Dict[str, Any]] = []
-    for name, params, prompt in zip(
-        predicted_function_names, predicted_functions_params, prompts
-    ):
-        params_to_dict: Dict[str, Any] = json.loads(params)
-        try:
+    try:
+        for name, params, prompt in zip(
+            predicted_function_names, predicted_functions_params, prompts
+        ):
+            params_to_dict: Dict[str, Any] = json.loads(params)
             if len(params_to_dict) == 1:
                 (param_name, param_value), = params_to_dict.items()
                 param_type = functions_data[name].parameters[param_name]
@@ -374,17 +414,18 @@ if __name__ == "__main__":
                     param_type = functions_data[name].parameters[param_name]
                     params_to_dict[param_name] = cast_value(
                         param_value, param_type.type)
-        except (ValueError, KeyError):
-            sys.exit("Error: type casting failed")
 
-        results.append({
-            "prompt": prompt.prompt,
-            "name": name,
-            "parameters": params_to_dict,
-        })
+            results.append({
+                "prompt": prompt.prompt,
+                "name": name,
+                "parameters": params_to_dict,
+            })
+    except (ValueError, KeyError):
+        sys.exit("Error: type casting failed")
+    except json.JSONDecodeError:
+        sys.exit("Error: invalid JSON format")
 
     output_path: str = args.output
-
     try:
         output_dir: str = os.path.dirname(output_path)
         if output_dir:
