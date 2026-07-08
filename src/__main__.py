@@ -388,7 +388,7 @@ if __name__ == "__main__":
     predicted_function_names: List[str] = []
     for prompt in prompts:
         result: List[int] = get_function_name(prompt.prompt, valid_names)
-        predicted_function_names.append(llm.decode(result))
+        predicted_function_names.append(clean_text(llm.decode(result)))
 
     functions_data: Dict[str, Any] = {
         function.name: function for function in functions_list}
@@ -396,7 +396,7 @@ if __name__ == "__main__":
     predicted_functions_params: List[str] = []
     for name, prompt in zip(predicted_function_names, prompts):
         predicted_functions_params.append(
-            get_fn_params(name, functions_data, prompt.prompt))
+            clean_text(get_fn_params(name, functions_data, prompt.prompt)))
 
     results: List[Dict[str, Any]] = []
     try:
