@@ -10,6 +10,7 @@ from .parsing import (
     FunctionDefinitionModel,
 )
 from typing import List, Dict, Set, Any, Union
+from enum import Enum
 
 
 def function_name_context() -> str:
@@ -102,6 +103,7 @@ def valid_string(encoded_prompt: List[int]) -> str:
     """
     quote_id: int = vocab_content['"']
     result: str = ''
+    max_tokens = 100
 
     logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
     vocab_len: int = len(logits)
@@ -114,8 +116,7 @@ def valid_string(encoded_prompt: List[int]) -> str:
     result += llm.decode([picked_token])
 
     generated_tokens: int = 0
-    limit = len(encoded_prompt)
-    while generated_tokens < limit:
+    while generated_tokens < max_tokens:
         logits = llm.get_logits_from_input_ids(encoded_prompt)
         picked_token = logits.index(max(logits))
         decoded: str = llm.decode([picked_token])
@@ -160,10 +161,10 @@ def valid_number(encoded_prompt: List[int]) -> str:
         llm.encode(token).tolist()[0][0]
         for token in valid_tokens]
     result: str = ""
+    max_tokens = 100
 
     generated_tokens: int = 0
-    limit: int = len(encoded_prompt)
-    while generated_tokens < limit:
+    while generated_tokens < max_tokens:
         logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
         for x in range(len(logits)):
             if x not in valid_tokens_encoded:
