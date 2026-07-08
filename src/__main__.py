@@ -10,7 +10,6 @@ from .parsing import (
     FunctionDefinitionModel,
 )
 from typing import List, Dict, Set, Any, Union
-from enum import Enum
 
 
 def function_name_context() -> str:
