@@ -469,7 +469,7 @@ if __name__ == "__main__":
             os.makedirs(output_dir, exist_ok=True)
         with open(output_path, "w") as f:
             json.dump(results, f, indent=2)
-    except (OSError, IOError) as e:
+    except OSError as e:
         sys.exit(f"Error: could not write output file '{output_path}': {e}")
     except PermissionError:
         sys.exit("Error: permission to write in file is denied")
