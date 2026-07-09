@@ -7,7 +7,7 @@ dependencies = [
     "llm-sdk",
     "flake8",
     "mypy",
-    "numpy>=2.4.4",
+    "numpy>=1.0.0,<2.0.0",
     "pydantic>=2.13.2",
 ]
 
