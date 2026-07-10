@@ -102,7 +102,7 @@ def valid_string(encoded_prompt: List[int]) -> str:
     """
     quote_id: int = vocab_content['"']
     result: str = ''
-    max_tokens: int = 100
+    limit: int = len(encoded_prompt)
 
     logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
     vocab_len: int = len(logits)
@@ -115,7 +115,7 @@ def valid_string(encoded_prompt: List[int]) -> str:
     result += llm.decode([picked_token])
 
     generated_tokens: int = 0
-    while generated_tokens < max_tokens:
+    while generated_tokens < limit:
         logits = llm.get_logits_from_input_ids(encoded_prompt)
         picked_token = logits.index(max(logits))
         decoded: str = llm.decode([picked_token])
@@ -171,7 +171,7 @@ def valid_number(encoded_prompt: List[int]) -> str:
         for token in rest_tokens]
 
     result: str = ""
-    max_tokens: int = 100
+    limit: int = len(encoded_prompt)
 
     logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
     for x in range(len(logits)):
@@ -183,7 +183,7 @@ def valid_number(encoded_prompt: List[int]) -> str:
     result += llm.decode([picked_token])
 
     generated_tokens: int = 1
-    while generated_tokens < max_tokens:
+    while generated_tokens < limit:
         logits = llm.get_logits_from_input_ids(encoded_prompt)
         if generated_tokens == 1 and llm.decode([picked_token]) == '-':
             for x in range(len(logits)):
