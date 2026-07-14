@@ -130,6 +130,8 @@ def validate_functions(
         sys.exit("Error: functions definition file not found")
     except PermissionError:
         sys.exit("Error: permission to read file is denied")
+    except IsADirectoryError:
+        sys.exit("Error: the path is a directory")
     except json.JSONDecodeError:
         sys.exit("Error: invalid JSON in functions definition file")
 
@@ -170,6 +172,8 @@ def validate_tests(
         sys.exit("Error: function calling tests file not found")
     except PermissionError:
         sys.exit("Error: premission to read file is denied")
+    except IsADirectoryError:
+        sys.exit("Error: the path is a directory")
     except json.JSONDecodeError:
         sys.exit("Error: invalid JSON in tests file")
 

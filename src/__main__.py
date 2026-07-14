@@ -405,6 +405,8 @@ if __name__ == "__main__":
         sys.exit("Error: vocabulary file not found")
     except PermissionError:
         sys.exit("Error: permission to read file is denied")
+    except IsADirectoryError:
+        sys.exit("Error: the path is a directory")
     except json.JSONDecodeError as e:
         sys.exit(f"Error: invalid JSON in vocabulary file {e}")
 
@@ -414,7 +416,7 @@ if __name__ == "__main__":
             for function in functions_list
         ]
     except Exception as e:
-        sys.exit(f"Error: failed to encode function names: {e}")
+        sys.exit(f"{e}")
 
     predicted_function_names: List[str] = []
     try:
@@ -457,10 +459,10 @@ if __name__ == "__main__":
                 "name": name,
                 "parameters": params_to_dict,
             })
-    except (ValueError, KeyError):
-        sys.exit("Error: type casting failed")
     except json.JSONDecodeError:
         sys.exit("Error: invalid JSON format")
+    except (ValueError, KeyError):
+        sys.exit("Error: type casting failed")
 
     output_path: str = args.output
     try:
@@ -469,11 +471,13 @@ if __name__ == "__main__":
             os.makedirs(output_dir, exist_ok=True)
         with open(output_path, "w") as f:
             json.dump(results, f, indent=2)
-    except OSError as e:
-        sys.exit(f"Error: could not write output file '{output_path}': {e}")
     except PermissionError:
         sys.exit("Error: permission to write in file is denied")
     except FileNotFoundError:
         sys.exit("Error: file not found")
+    except IsADirectoryError:
+        sys.exit("Error: the path is a directory")
+    except OSError as e:
+        sys.exit(f"Error: could not write output file '{output_path}': {e}")
 
     print(f"Done. Results written to '{output_path}'")
