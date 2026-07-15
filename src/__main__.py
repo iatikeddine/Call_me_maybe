@@ -474,10 +474,10 @@ if __name__ == "__main__":
         except IsADirectoryError:
             sys.exit("Error: the path is a directory")
         except OSError as e:
-            sys.exit(f"Error: could not write output file "
-                     f"'{output_path}': {e}")
+            sys.exit(f"Error: could not write output file '"
+                     f"{output_path}': {e}")
 
     except KeyboardInterrupt:
-        sys.exit("Error: the program exited unexpectedly")
+        sys.exit("Error: program exited unexpectedly")
 
     print(f"Done. Results written to '{output_path}'")

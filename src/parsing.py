@@ -1,5 +1,5 @@
 import json
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 import sys
 from pydantic import (
     BaseModel,
@@ -22,14 +22,7 @@ class ParameterModel(BaseModel):
     @field_validator("type")
     @classmethod
     def valid_type(cls, type: str) -> str:
-        """Validate that the parameter type is one of the accepted values.
-
-        Args:
-            type: return type to validate
-
-        Returns
-            the same value after validation
-        """
+        """Validate that the parameter type is one of the accepted values."""
         valid_types: List[str] = [
             "string", "number", "integer", "boolean"]
         if type.lower() not in valid_types:
@@ -50,14 +43,7 @@ class ReturnModel(BaseModel):
     @field_validator("type")
     @classmethod
     def valid_type(cls, type: str) -> str:
-        """Validate that the return type is one of the accepted values.
-
-        Args:
-            type: paramter type to validate
-
-        Returns:
-            the same value after validation
-        """
+        """Validate that the return type is one of the accepted values."""
         valid_types: List[str] = [
             "string", "number", "integer", "boolean"]
         if type.lower() not in valid_types:
@@ -85,14 +71,7 @@ class FunctionDefinitionModel(BaseModel):
     @field_validator("name", "description")
     @classmethod
     def not_empty(cls, value: str) -> str:
-        """Validate that name and description fields are not blank.
-
-        Args:
-            value: takes the values of name and description
-
-        Returns:
-            returns the same value after check
-        """
+        """Validate that name and description fields are not blank."""
         if not value.strip():
             raise ValueError("Error: filed must not be blank")
         return value
@@ -103,13 +82,7 @@ class FunctionDefinitionModel(BaseModel):
         cls,
         value: Dict[str, ParameterModel]
     ) -> Dict[str, ParameterModel]:
-        """Validate that no parameter name in the mapping is blank.
-
-        Args:
-            value: the dictionary to validate
-        Returns:
-            the same dictionary validated
-        """
+        """Validate that no parameter name in the mapping is blank."""
         for name in value:
             if not name.strip():
                 raise ValueError("Error: parameter name can't be empty")
@@ -129,23 +102,29 @@ class FunctionCallingTests(BaseModel):
     @field_validator("prompt")
     @classmethod
     def valid_prompt(cls, prompt: str) -> str:
-        """Validate that the prompt field is not blank.
-
-        Args:
-            prompt: the user prompt to validate
-
-        Returns:
-            the same user prompt after validation
-        """
+        """Validate that the prompt field is not blank."""
         if not prompt.strip():
             raise ValueError("Error: prompt can't be empty")
         return prompt
+
+
+def prevent_duplicates(items: List[Tuple[str, Any]]) -> Dict[str, Any]:
+    check = {}
+    for key, value in items:
+        if key in check:
+            raise ValueError("Error: duplicated parameter name")
+        check[key] = value
+    return check
 
 
 def validate_functions(
     filepath: str
 ) -> List[FunctionDefinitionModel]:
     """Load and validate a function definitions JSON file.
+
+    Reads a JSON array from the given filepath and validates each entry
+    against FunctionDefinitionModel. Exits with an error message if the
+    file is not found, contains invalid JSON, or fails schema validation.
 
     Args:
         filepath: Path to the JSON file containing function definitions.
@@ -155,13 +134,16 @@ def validate_functions(
     """
     try:
         with open(filepath, 'r') as f:
-            data: List[Dict[str, Any]] = json.load(f)
+            data: List[Dict[str, Any]] = json.load(
+                f, object_pairs_hook=prevent_duplicates)
     except FileNotFoundError:
         sys.exit("Error: functions definition file not found")
     except PermissionError:
         sys.exit("Error: permission to read file is denied")
     except IsADirectoryError:
         sys.exit("Error: the path is a directory")
+    except ValueError as e:
+        sys.exit(f"{e}")
     except json.JSONDecodeError:
         sys.exit("Error: invalid JSON in functions definition file")
 
@@ -183,6 +165,10 @@ def validate_tests(
     filepath: str
 ) -> List[FunctionCallingTests]:
     """Load and validate a function calling tests JSON file.
+
+    Reads a JSON array from the given filepath and validates each entry
+    against FunctionCallingTests. Exits with an error message if the file
+    is not found, contains invalid JSON, or fails schema validation.
 
     Args:
         filepath: Path to the JSON file containing test prompts.
