@@ -1,4 +1,4 @@
-*This project has been created as part of the 42 curriculum by iatikeddine.*
+*This project has been created as part of the 42 curriculum by iatikedd.*
 
 # Call me maybe
 
@@ -29,7 +29,7 @@ The core challenge is guaranteeing **100% valid JSON output** from a 0.6B parame
 
 ### Installation
 
-```bash
+```zsh
 uv sync
 ```
 
@@ -37,7 +37,7 @@ This installs all dependencies declared in `pyproject.toml` into a local virtual
 
 ### Running the program
 
-```bash
+```zsh
 uv run python -m src
 ```
 
@@ -45,7 +45,7 @@ By default the program reads from `data/input/` and writes to `data/output/funct
 
 Custom paths can be provided via arguments:
 
-```bash
+```zsh
 uv run python -m src \
   --functions_definition data/input/functions_definition.json \
   --input data/input/function_calling_tests.json \
@@ -54,7 +54,7 @@ uv run python -m src \
 
 ### Using the Makefile
 
-```bash
+```zsh
 make install  # install dependencies (uv sync)
 make run      # run with default paths
 make debug    # run with pdb debugger
@@ -62,40 +62,6 @@ make clean    # remove __pycache__ and .mypy_cache
 make lint     # checks flake and mypy
 
 ```
-
----
-
-## Example Usage
-
-```bash
-# Run with default paths
-uv run python -m src
-
-# Run with custom input files
-uv run python -m src \
-  --functions_definition path/to/functions.json \
-  --input path/to/tests.json \
-  --output path/to/results.json
-```
-
-Example output written to `data/output/function_calling_results.json`:
-
-```json
-[
-  {
-    "prompt": "What is the sum of 2 and 3?",
-    "name": "fn_add_numbers",
-    "parameters": { "a": 2.0, "b": 3.0 }
-  },
-  {
-    "prompt": "Reverse the string 'hello'",
-    "name": "fn_reverse_string",
-    "parameters": { "s": "hello" }
-  }
-]
-```
-
----
 
 ## Algorithm Explanation
 
@@ -139,7 +105,7 @@ After all parameters are generated, backslashes in the result are escaped and th
 
 - **Accuracy**: Achieves approximately 90%+ correct function name selection and argument extraction on the provided test set.
 - **JSON validity**: 100% of outputs are parseable JSON. Constrained decoding structurally prevents malformed output.
-- **Speed**: Processes all 11 test prompts in under 5 minutes on standard hardware. The main bottleneck is the LLM inference calls, one per token per parameter.
+- **Speed**: Processes all 11 test prompts in under 5 minutes on standard hardware. 
 - **Reliability**: The program never crashes on valid input. All file I/O, model loading, and type casting are wrapped in specific error handlers that print informative messages and exit cleanly.
 
 ---
@@ -159,6 +125,36 @@ After all parameters are generated, backslashes in the result are escaped and th
 - **Edge case prompts**: Additional prompts were written to stress-test the string decoder — inputs containing quotes, backslashes, long values, and special characters — to verify JSON format remained intact.
 
 ---
+
+## Example Usage
+
+```zsh
+# Run with default paths
+uv run python -m src
+
+# Run with custom input files
+uv run python -m src \
+  --functions_definition path/to/functions.json \
+  --input path/to/tests.json \
+  --output path/to/results.json
+```
+
+Example output written to `data/output/function_calling_results.json`:
+
+```json
+[
+  {
+    "prompt": "What is the sum of 2 and 3?",
+    "name": "fn_add_numbers",
+    "parameters": { "a": 2.0, "b": 3.0 }
+  },
+  {
+    "prompt": "Reverse the string 'hello'",
+    "name": "fn_reverse_string",
+    "parameters": { "s": "hello" }
+  }
+]
+```
 
 ## Resources
 
