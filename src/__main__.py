@@ -445,16 +445,10 @@ if __name__ == "__main__":
                 predicted_function_names, predicted_functions_params, prompts
             ):
                 params_to_dict: Dict[str, Any] = json.loads(params)
-                if len(params_to_dict) == 1:
-                    (param_name, param_value), = params_to_dict.items()
+                for param_name, param_value in params_to_dict.items():
                     param_type = functions_data[name].parameters[param_name]
                     params_to_dict[param_name] = cast_value(
                         param_value, param_type.type)
-                else:
-                    for p_name, param_value in params_to_dict.items():
-                        param_type = functions_data[name].parameters[p_name]
-                        params_to_dict[param_name] = cast_value(
-                            param_value, param_type.type)
 
                 results.append({
                     "prompt": prompt.prompt,
