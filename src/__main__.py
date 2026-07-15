@@ -171,7 +171,7 @@ def valid_number(encoded_prompt: List[int]) -> str:
         for token in rest_tokens]
 
     result: str = ""
-    limit: int = len(encoded_prompt)
+    limit: int = 100
 
     logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
     for x in range(len(logits)):
@@ -361,123 +361,129 @@ def clean_text(text: str) -> str:
 
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(
-        description="Function calling with constrained decoding"
-    )
-    parser.add_argument(
-        "--functions_definition",
-        default="data/input/functions_definition.json",
-        help="Path to the function definitions JSON file",
-    )
-    parser.add_argument(
-        "--input",
-        default="data/input/function_calling_tests.json",
-        help="Path to the function calling tests JSON file",
-    )
-    parser.add_argument(
-        "--output",
-        default="data/output/function_calling_results.json",
-        help="Path for the output JSON file",
-    )
-    args = parser.parse_args()
     try:
-        if not args.output.endswith(".json"):
-            raise ValueError("invalid ouput path does not contain .json")
-    except ValueError as e:
-        sys.exit(f"{e}")
+        parser = argparse.ArgumentParser(
+            description="Function calling with constrained decoding"
+        )
+        parser.add_argument(
+            "--functions_definition",
+            default="data/input/functions_definition.json",
+            help="Path to the function definitions JSON file",
+        )
+        parser.add_argument(
+            "--input",
+            default="data/input/function_calling_tests.json",
+            help="Path to the function calling tests JSON file",
+        )
+        parser.add_argument(
+            "--output",
+            default="data/output/function_calling_results.json",
+            help="Path for the output JSON file",
+        )
+        args = parser.parse_args()
+        try:
+            if not args.output.endswith(".json"):
+                raise ValueError("invalid ouput path does not contain .json")
+        except ValueError as e:
+            sys.exit(f"{e}")
 
-    functions_list: List[FunctionDefinitionModel] = validate_functions(
-        args.functions_definition
-    )
-    prompts: List[FunctionCallingTests] = validate_tests(args.input)
+        functions_list: List[FunctionDefinitionModel] = validate_functions(
+            args.functions_definition
+        )
+        prompts: List[FunctionCallingTests] = validate_tests(args.input)
 
-    try:
-        llm: Small_LLM_Model = Small_LLM_Model()
-    except Exception as e:
-        sys.exit(f"Error: failed to load the LLM model: {e}")
+        try:
+            llm: Small_LLM_Model = Small_LLM_Model()
+        except Exception as e:
+            sys.exit(f"Error: failed to load the LLM model: {e}")
 
-    try:
-        vocab_file: str = llm.get_path_to_vocab_file()
-        with open(vocab_file, 'r') as f:
-            vocab_content: Dict[str, int] = json.load(f)
-    except FileNotFoundError:
-        sys.exit("Error: vocabulary file not found")
-    except PermissionError:
-        sys.exit("Error: permission to read file is denied")
-    except IsADirectoryError:
-        sys.exit("Error: the path is a directory")
-    except json.JSONDecodeError as e:
-        sys.exit(f"Error: invalid JSON in vocabulary file {e}")
+        try:
+            vocab_file: str = llm.get_path_to_vocab_file()
+            with open(vocab_file, 'r') as f:
+                vocab_content: Dict[str, int] = json.load(f)
+        except FileNotFoundError:
+            sys.exit("Error: vocabulary file not found")
+        except PermissionError:
+            sys.exit("Error: permission to read file is denied")
+        except IsADirectoryError:
+            sys.exit("Error: the path is a directory")
+        except json.JSONDecodeError as e:
+            sys.exit(f"Error: invalid JSON in vocabulary file {e}")
 
-    try:
-        valid_names: List[List[int]] = [
-            llm.encode(function.name).tolist()[0]
-            for function in functions_list
-        ]
-    except Exception as e:
-        sys.exit(f"{e}")
+        try:
+            valid_names: List[List[int]] = [
+                llm.encode(function.name).tolist()[0]
+                for function in functions_list
+            ]
+        except Exception as e:
+            sys.exit(f"{e}")
 
-    predicted_function_names: List[str] = []
-    try:
-        for prompt in prompts:
-            result: List[int] = get_function_name(prompt.prompt, valid_names)
-            predicted_function_names.append(clean_text(llm.decode(result)))
-    except Exception as e:
-        sys.exit(f"{e}")
+        predicted_function_names: List[str] = []
+        try:
+            for prompt in prompts:
+                result: List[int] = get_function_name(
+                    prompt.prompt, valid_names)
+                predicted_function_names.append(clean_text(llm.decode(result)))
+        except Exception as e:
+            sys.exit(f"{e}")
 
-    functions_data: Dict[str, FunctionDefinitionModel] = {
-        function.name: function for function in functions_list}
+        functions_data: Dict[str, FunctionDefinitionModel] = {
+            function.name: function for function in functions_list}
 
-    predicted_functions_params: List[str] = []
-    try:
-        for name, prompt in zip(predicted_function_names, prompts):
-            predicted_functions_params.append(
-                clean_text(get_fn_params(name, functions_data, prompt.prompt)))
-    except Exception as e:
-        sys.exit(f"{e}")
+        predicted_functions_params: List[str] = []
+        try:
+            for name, prompt in zip(predicted_function_names, prompts):
+                predicted_functions_params.append(
+                    clean_text(get_fn_params(
+                        name, functions_data, prompt.prompt)))
+        except Exception as e:
+            sys.exit(f"{e}")
 
-    results: List[Dict[str, Any]] = []
-    try:
-        for name, params, prompt in zip(
-            predicted_function_names, predicted_functions_params, prompts
-        ):
-            params_to_dict: Dict[str, Any] = json.loads(params)
-            if len(params_to_dict) == 1:
-                (param_name, param_value), = params_to_dict.items()
-                param_type = functions_data[name].parameters[param_name]
-                params_to_dict[param_name] = cast_value(
-                    param_value, param_type.type)
-            else:
-                for param_name, param_value in params_to_dict.items():
+        results: List[Dict[str, Any]] = []
+        try:
+            for name, params, prompt in zip(
+                predicted_function_names, predicted_functions_params, prompts
+            ):
+                params_to_dict: Dict[str, Any] = json.loads(params)
+                if len(params_to_dict) == 1:
+                    (param_name, param_value), = params_to_dict.items()
                     param_type = functions_data[name].parameters[param_name]
                     params_to_dict[param_name] = cast_value(
                         param_value, param_type.type)
+                else:
+                    for p_name, param_value in params_to_dict.items():
+                        param_type = functions_data[name].parameters[p_name]
+                        params_to_dict[param_name] = cast_value(
+                            param_value, param_type.type)
 
-            results.append({
-                "prompt": prompt.prompt,
-                "name": name,
-                "parameters": params_to_dict,
-            })
-    except json.JSONDecodeError:
-        sys.exit("Error: invalid JSON format")
-    except (ValueError, KeyError):
-        sys.exit("Error: type casting failed")
+                results.append({
+                    "prompt": prompt.prompt,
+                    "name": name,
+                    "parameters": params_to_dict,
+                })
+        except json.JSONDecodeError:
+            sys.exit("Error: invalid JSON format")
+        except (ValueError, KeyError):
+            sys.exit("Error: type casting failed")
 
-    output_path: str = args.output
-    try:
-        output_dir: str = os.path.dirname(output_path)
-        if output_dir:
-            os.makedirs(output_dir, exist_ok=True)
-        with open(output_path, "w") as f:
-            json.dump(results, f, indent=2)
-    except PermissionError:
-        sys.exit("Error: permission to write in file is denied")
-    except FileNotFoundError:
-        sys.exit("Error: file not found")
-    except IsADirectoryError:
-        sys.exit("Error: the path is a directory")
-    except OSError as e:
-        sys.exit(f"Error: could not write output file '{output_path}': {e}")
+        output_path: str = args.output
+        try:
+            output_dir: str = os.path.dirname(output_path)
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+            with open(output_path, "w") as f:
+                json.dump(results, f, indent=2)
+        except PermissionError:
+            sys.exit("Error: permission to write in file is denied")
+        except FileNotFoundError:
+            sys.exit("Error: file not found")
+        except IsADirectoryError:
+            sys.exit("Error: the path is a directory")
+        except OSError as e:
+            sys.exit(f"Error: could not write output file "
+                     f"'{output_path}': {e}")
+
+    except KeyboardInterrupt:
+        sys.exit("Error: the program exited unexpectedly")
 
     print(f"Done. Results written to '{output_path}'")
