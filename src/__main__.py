@@ -26,26 +26,6 @@ def function_name_context() -> str:
     return context
 
 
-def valid_names_tokens(valid_names: List[List[int]]) -> Set[int]:
-    """Collect all individual token IDs from a list of encoded function names.
-
-    Args:
-        valid_names: A list of token-ID sequences, one per candidate
-            function name.
-
-    Returns:
-        A set containing every token ID that appears in any of the
-        candidate name sequences.
-    """
-    valid_tokens: Set[int] = set()
-
-    for encoded_name in valid_names:
-        for token in encoded_name:
-            valid_tokens.add(token)
-
-    return valid_tokens
-
-
 def get_function_name(prompt: str, valid_names: List[List[int]]) -> List[int]:
     """Use constrained decoding to select the best-matching function name.
 
@@ -68,7 +48,11 @@ def get_function_name(prompt: str, valid_names: List[List[int]]) -> List[int]:
 
     while (len(valid_names_copy) > 1):
         logits: List[float] = llm.get_logits_from_input_ids(encoded_prompt)
-        valid_tokens: Set[int] = valid_names_tokens(valid_names_copy)
+
+        valid_tokens: Set[int] = set()
+        for name in valid_names_copy:
+            if len(name) > token_position:
+                valid_tokens.add(name[token_position])
 
         vocab_len: int = len(logits)
         for x in range(vocab_len):
