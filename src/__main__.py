@@ -407,7 +407,8 @@ if __name__ == "__main__":
             for prompt in prompts:
                 result: List[int] = get_function_name(
                     prompt.prompt, valid_names)
-                predicted_function_names.append(clean_text(llm.decode(result)))
+                predicted_function_names.append(
+                    clean_text(llm.decode(result).rstrip('"')))
         except Exception as e:
             sys.exit(f"{e}")
 
