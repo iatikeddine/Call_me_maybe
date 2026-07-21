@@ -22,7 +22,14 @@ class ParameterModel(BaseModel):
     @field_validator("type")
     @classmethod
     def valid_type(cls, type: str) -> str:
-        """Validate that the parameter type is one of the accepted values."""
+        """Validate that the parameter type is one of the accepted values.
+
+        Args:
+            type: The parameter type string to validate.
+
+        Returns:
+            The validated type string, unchanged.
+        """
         valid_types: List[str] = [
             "string", "number", "integer", "boolean"]
         if type.lower() not in valid_types:
@@ -43,7 +50,14 @@ class ReturnModel(BaseModel):
     @field_validator("type")
     @classmethod
     def valid_type(cls, type: str) -> str:
-        """Validate that the return type is one of the accepted values."""
+        """Validate that the return type is one of the accepted values.
+
+        Args:
+            type: The return type string to validate.
+
+        Returns:
+            The validated type string, unchanged.
+        """
         valid_types: List[str] = [
             "string", "number", "integer", "boolean"]
         if type.lower() not in valid_types:
@@ -71,7 +85,14 @@ class FunctionDefinitionModel(BaseModel):
     @field_validator("name", "description")
     @classmethod
     def not_empty(cls, value: str) -> str:
-        """Validate that name and description fields are not blank."""
+        """Validate that name and description fields are not blank.
+
+        Args:
+            value: The field value to validate.
+
+        Returns:
+            The validated value, unchanged.
+        """
         if not value.strip():
             raise ValueError("Error: filed must not be blank")
         return value
@@ -82,7 +103,15 @@ class FunctionDefinitionModel(BaseModel):
         cls,
         value: Dict[str, ParameterModel]
     ) -> Dict[str, ParameterModel]:
-        """Validate that no parameter name in the mapping is blank."""
+        """Validate that no parameter name in the mapping is blank.
+
+        Args:
+            value: Mapping of parameter names to their ParameterModel
+                descriptors.
+
+        Returns:
+            The validated mapping, unchanged.
+        """
         for name in value:
             if not name.strip():
                 raise ValueError("Error: parameter name can't be empty")
@@ -102,13 +131,29 @@ class FunctionCallingTests(BaseModel):
     @field_validator("prompt")
     @classmethod
     def valid_prompt(cls, prompt: str) -> str:
-        """Validate that the prompt field is not blank."""
+        """Validate that the prompt field is not blank.
+
+        Args:
+            prompt: The prompt string to validate.
+
+        Returns:
+            The validated prompt, unchanged.
+        """
         if not prompt.strip():
             raise ValueError("Error: prompt can't be empty")
         return prompt
 
 
 def prevent_duplicates(items: List[Tuple[str, Any]]) -> Dict[str, Any]:
+    """Build a dict from key-value pairs, rejecting duplicate keys.
+
+    Args:
+        items: A list of (key, value) pairs, as passed by the JSON
+            decoder for each object it parses.
+
+    Returns:
+        A dict mapping each key to its value.
+    """
     check = {}
     for key, value in items:
         if key in check:
@@ -142,6 +187,8 @@ def validate_functions(
         sys.exit("Error: permission to read file is denied")
     except IsADirectoryError:
         sys.exit("Error: the path is a directory")
+    except UnicodeDecodeError:
+        sys.exit("Error: file is not valid text")
     except ValueError as e:
         sys.exit(f"{e}")
     except json.JSONDecodeError:
@@ -179,13 +226,18 @@ def validate_tests(
 
     try:
         with open(filepath, 'r') as f:
-            data: List[Dict[str, Any]] = json.load(f)
+            data: List[Dict[str, Any]] = json.load(
+                f, object_pairs_hook=prevent_duplicates)
     except FileNotFoundError:
         sys.exit("Error: function calling tests file not found")
     except PermissionError:
         sys.exit("Error: premission to read file is denied")
     except IsADirectoryError:
         sys.exit("Error: the path is a directory")
+    except UnicodeDecodeError:
+        sys.exit("Error: file is not valid text")
+    except ValueError as e:
+        sys.exit(f"{e}")
     except json.JSONDecodeError:
         sys.exit("Error: invalid JSON in tests file")
 
