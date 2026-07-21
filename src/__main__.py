@@ -396,7 +396,7 @@ if __name__ == "__main__":
 
         try:
             valid_names: List[List[int]] = [
-                llm.encode(function.name).tolist()[0]
+                llm.encode(function.name + '"').tolist()[0]
                 for function in functions_list
             ]
         except Exception as e:
