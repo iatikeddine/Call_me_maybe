@@ -181,6 +181,8 @@ def validate_functions(
         with open(filepath, 'r') as f:
             data: List[Dict[str, Any]] = json.load(
                 f, object_pairs_hook=prevent_duplicates)
+        if not data:
+            raise ValueError("Error: empty functions definition")
     except FileNotFoundError:
         sys.exit("Error: functions definition file not found")
     except PermissionError:
@@ -189,10 +191,10 @@ def validate_functions(
         sys.exit("Error: the path is a directory")
     except UnicodeDecodeError:
         sys.exit("Error: file is not valid text")
-    except ValueError as e:
-        sys.exit(f"{e}")
     except json.JSONDecodeError:
         sys.exit("Error: invalid JSON in functions definition file")
+    except ValueError as e:
+        sys.exit(f"{e}")
 
     try:
         validated_functions: List[FunctionDefinitionModel] = []
@@ -228,6 +230,8 @@ def validate_tests(
         with open(filepath, 'r') as f:
             data: List[Dict[str, Any]] = json.load(
                 f, object_pairs_hook=prevent_duplicates)
+        if not data:
+            raise ValueError("Error: empty tests file")
     except FileNotFoundError:
         sys.exit("Error: function calling tests file not found")
     except PermissionError:
@@ -236,10 +240,10 @@ def validate_tests(
         sys.exit("Error: the path is a directory")
     except UnicodeDecodeError:
         sys.exit("Error: file is not valid text")
-    except ValueError as e:
-        sys.exit(f"{e}")
     except json.JSONDecodeError:
         sys.exit("Error: invalid JSON in tests file")
+    except ValueError as e:
+        sys.exit(f"{e}")
 
     try:
         validate_prompts: List[FunctionCallingTests] = []
